@@ -1,0 +1,34 @@
+{
+  "name": "@bdxi/beldex-locales",
+  "version": "1.0.0",
+  "description": "List of supported locales",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --recursive"
+  },
+  "author": "Alexsanchez <alexsanchez@beldex.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beldex-Coin/beldex-utils.git"
+  },
+  "license": "BSD-3-Clause",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "mocha": "^9.2.0"
+  },
+  "bugs": {
+    "url": "https://github.com/Beldex-Coin/beldex-utils/issues"
+  },
+  "homepage": "https://github.com/Beldex-Coin/beldex-utils#readme",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [
+    "beldex",
+    "bdxi",
+    "coin",
+    "bdx"
+  ]
+}

@@ -1,0 +1,15 @@
+.AppTimeoutSlider {
+  margin-top: 40px;
+  .slider {
+    .MuiSlider-rail {
+      background-color: #1f1f2e;
+    }
+
+    // .MuiSlider-valueLabel {
+    //   background-color: #2b2b3c;
+    // }
+    .MuiSlider-thumb {
+      background-color: #d1d1d3;
+    }
+  }
+}

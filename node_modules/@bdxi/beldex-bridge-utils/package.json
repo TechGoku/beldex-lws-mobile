@@ -1,0 +1,29 @@
+{
+  "name": "@bdxi/beldex-bridge-utils",
+  "version": "1.0.0",
+  "description": "<p align=\"center\">   Bridge Utils for the Beldex Wallet </p>",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alexsanchez <alexsanchez@beldex.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beldex-Coin/beldex-utils.git#master"
+  },
+  "license": "ISC",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/Beldex-Coin/beldex-utils/issues"
+  },
+  "homepage": "https://github.com/Beldex-Coin/beldex-utils/tree/master#readme",
+  "keywords": [
+    "beldex",
+    "bdxi",
+    "bdx",
+    "SDK",
+    "crypto"
+  ]
+}

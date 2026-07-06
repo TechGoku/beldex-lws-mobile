@@ -1,0 +1,46 @@
+{
+  "name": "@bdxi/beldex-openalias",
+  "version": "1.0.0",
+  "description": "Connector for converting openalias addresses to beldex addresses",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --recursive test"
+  },
+  "author": "Alexsanchez <alexsanchez@beldex.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beldex-Coin/beldex-utils.git#master"
+  },
+  "license": "BSD-3-Clause",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "axios": "^0.21.3"
+  },
+  "devDependencies": {
+    "axios-mock-adapter": "^1.19.0",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^9.2.0",
+    "standard": "^16.0.3"
+  },
+  "standard": {
+    "ignore": [
+      "/test"
+    ]
+  },
+  "bugs": {
+    "url": "https://github.com/Beldex-Coin/beldex-utils/issues"
+  },
+  "homepage": "https://github.com/Beldex-Coin/beldex-utils/tree/master#readme",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [
+    "beldex",
+    "bdxi",
+    "bdx",
+    "crypto"
+  ]
+}

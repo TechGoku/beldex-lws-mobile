@@ -1,0 +1,61 @@
+.WalletAddressAndKeys {
+  background-color: #1c1c26;
+  margin-top: 20px;
+  color: #fff;
+  padding: 20px;
+  border-radius: 20px;
+
+  .address-wrapper {
+    display: flex;
+    flex-direction: row;
+  }
+  .address-without-key {
+    font-weight: 400;
+    // width: 65%;
+    // overflow: hidden;
+    // text-overflow: ellipsis;
+    margin-left: 10px;
+
+    // color: #afafbe;
+    font-weight: 400;
+    position: absolute;
+    text-overflow: ellipsis;
+    width: calc(55%);
+    display: inline-block;
+    word-wrap: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    margin-left: 80px;
+    margin-right: 50px;
+  }
+  .address-with-key {
+    // color: #afafbe;
+    word-break: break-all;
+    font-weight: 400;
+    width: 85%;
+  }
+  .d-none {
+    // display: none;
+    height: 0px;
+    overflow: hidden;
+  }
+  .d-block {
+    // display: block;
+    height: 100%;
+    transition: height 2s;
+  }
+  .rotate{
+    transform: rotate(267deg);
+    transition: transform 0.1s;
+
+  }
+  .rotateUp{
+    transform: rotate(90deg);
+    transition: transform 0.1s;
+
+  }
+  
+  .copyIcon {
+    color: #20d030;
+  }
+}

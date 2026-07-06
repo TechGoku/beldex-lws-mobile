@@ -1,0 +1,31 @@
+{
+  "name": "@bdxi/beldex-sendfunds-utils",
+  "version": "1.0.0",
+  "description": "Utils for managing the send fund process for mymonero",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Alexsanchez <alexsanchez@beldex.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Beldex-Coin/beldex-utils.git#master"
+  },
+  "license": "BSD-3-Clause",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/Beldex-Coin/beldex-utils/issues"
+  },
+  "homepage": "https://github.com/Beldex-Coin/beldex-utils/tree/master#readme",
+  "directories": {
+    "test": "test"
+  },
+  "keywords": [
+    "beldex",
+    "bdxi",
+    "bdx",
+    "crypto"
+  ]
+}
