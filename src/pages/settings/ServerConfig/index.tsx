@@ -22,6 +22,14 @@ import {
   getDefaults,
   isUsingCustomServer,
 } from "../../../services/runtimeConfig";
+import {
+  ProxySettings,
+  ProxyType,
+  loadProxySettings,
+  saveProxySettings,
+} from "../../../services/proxy";
+import { Capacitor } from "@capacitor/core";
+import Switch from "@mui/material/Switch";
 import { setUserLogout } from "../../../stores/features/seedDetailSlice";
 import { useAppDispatch } from "../../../stores/hooks";
 
@@ -44,10 +52,48 @@ export default function ServerConfig() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, setPending] = useState<{ url: string; nettype: number } | null>(null);
 
+  const [proxyEnabled, setProxyEnabled] = useState(false);
+  const [proxyHost, setProxyHost] = useState("");
+  const [proxyPort, setProxyPort] = useState("8080");
+  const [proxyType, setProxyType] = useState<ProxyType>("http");
+  const [proxyError, setProxyError] = useState("");
+
   useEffect(() => {
     setUrl(getRawServerUrl());
     setNettype(getNetType());
+    loadProxySettings().then((p: ProxySettings) => {
+      setProxyEnabled(p.enabled);
+      setProxyHost(p.host);
+      setProxyPort(String(p.port));
+      setProxyType(p.type);
+    });
   }, []);
+
+  const handleProxySave = async () => {
+    const portNum = parseInt(proxyPort, 10);
+    if (proxyEnabled) {
+      if (!proxyHost.trim()) {
+        setProxyError("Proxy host is required");
+        return;
+      }
+      if (!Number.isFinite(portNum) || portNum < 1 || portNum > 65535) {
+        setProxyError("Enter a valid port (1-65535)");
+        return;
+      }
+    }
+    setProxyError("");
+    const applied = await saveProxySettings({
+      enabled: proxyEnabled,
+      host: proxyHost.trim(),
+      port: Number.isFinite(portNum) ? portNum : 8080,
+      type: proxyType,
+    });
+    if (proxyEnabled && !applied && Capacitor.isNativePlatform()) {
+      toast("Proxy saved but could not be applied", false);
+    } else {
+      toast(proxyEnabled ? "Proxy enabled" : "Proxy disabled");
+    }
+  };
 
   const toast = (msg: string, ok = true) => toastRef.current?.showAlert(msg, ok ? "success" : "error");
 
@@ -210,6 +256,104 @@ export default function ServerConfig() {
               onClick={requestSave}
             >
               Save & Apply
+            </Button>
+          </Box>
+
+          {/* ---- Proxy ---- */}
+          <Box
+            sx={{
+              mt: 5,
+              pt: 3,
+              borderTop: `1px solid ${theme.palette.mode === "dark" ? "#32324A" : "#E5E5E5"}`,
+            }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box sx={{ pr: 2 }}>
+                <Typography sx={{ fontWeight: 700, fontSize: "1.1rem" }}>
+                  Proxy
+                </Typography>
+                <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.85rem" }}>
+                  Route all traffic via HTTP, HTTPS or SOCKS5 (mobile app)
+                </Typography>
+              </Box>
+              <Switch checked={proxyEnabled} onChange={(e) => setProxyEnabled(e.target.checked)} />
+            </Box>
+
+            {proxyEnabled && (
+              <Box mt={2}>
+                <Typography sx={{ fontWeight: 600 }}>Type</Typography>
+                <Select
+                  fullWidth
+                  disableUnderline
+                  variant="filled"
+                  IconComponent={KeyboardArrowDownIcon}
+                  value={proxyType}
+                  onChange={(e) => setProxyType(e.target.value as ProxyType)}
+                  sx={{
+                    mt: 1,
+                    mb: 1,
+                    borderRadius: "12px",
+                    backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+                    color: theme.palette.text.primary,
+                    "& .MuiSelect-icon": { color: theme.palette.text.primary },
+                    "& .MuiFilledInput-input": { paddingTop: "16px" },
+                  }}
+                >
+                  <MenuItem value="http">HTTP (handles http & https)</MenuItem>
+                  <MenuItem value="https">HTTPS (proxy over TLS)</MenuItem>
+                  <MenuItem value="socks">SOCKS5 (route all traffic, VPN-like)</MenuItem>
+                </Select>
+                <Box display="flex" gap={2} sx={{ flexWrap: "wrap" }}>
+                  <Box sx={{ flex: "2 1 200px", minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 600 }}>Host</Typography>
+                    <Input
+                      placeholder="127.0.0.1 or proxy.example.com"
+                      disableUnderline
+                      fullWidth
+                      sx={{ ...inputSx, mt: 1 }}
+                      value={proxyHost}
+                      onChange={(e) => {
+                        setProxyHost(e.target.value);
+                        setProxyError("");
+                      }}
+                    />
+                  </Box>
+                  <Box sx={{ flex: "1 1 100px", minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 600 }}>Port</Typography>
+                    <Input
+                      placeholder="8080"
+                      disableUnderline
+                      fullWidth
+                      sx={{ ...inputSx, mt: 1 }}
+                      value={proxyPort}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (/^\d*$/.test(v)) setProxyPort(v);
+                        setProxyError("");
+                      }}
+                    />
+                  </Box>
+                </Box>
+                {proxyError && (
+                  <Typography sx={{ color: "#FC2727", fontSize: "0.85rem", mt: 1 }}>
+                    {proxyError}
+                  </Typography>
+                )}
+                <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.78rem", mt: 1.5 }}>
+                  All wallet and in-app web traffic is routed through the proxy.
+                  Use SOCKS5 to tunnel everything like a VPN. HTTP/HTTPS proxies
+                  also carry both http and https requests.
+                </Typography>
+              </Box>
+            )}
+
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ borderRadius: "10px", mt: 2, width: "100%", color: "#fff" }}
+              onClick={handleProxySave}
+            >
+              {proxyEnabled ? "Save & Apply Proxy" : "Save Proxy Setting"}
             </Button>
           </Box>
         </Box>

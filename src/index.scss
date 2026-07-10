@@ -1,5 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+// Poppins is bundled locally via @fontsource/poppins (imported in index.tsx).
+// Do NOT @import it from Google Fonts here: that adds a render-blocking
+// network fetch on every cold start, and fails entirely on offline /
+// filtered networks.
 
+html,
 body {
-  font-family: 'Poppins';
+  font-family: 'Poppins', 'Roboto', sans-serif;
+  // App-like feel inside the WebView:
+  -webkit-tap-highlight-color: transparent; // no grey flash on taps
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none; // no rubber-band/pull-to-refresh glow
+  touch-action: manipulation; // no 300ms double-tap-zoom delay
+}
+
+// UI chrome shouldn't be text-selectable (long-press selection looks broken
+// in an app). Inputs/textareas keep normal selection behavior.
+button,
+[role='button'],
+.MuiBottomNavigation-root,
+.MuiListItemButton-root {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+// Smooth momentum scrolling in scrollable panes
+* {
+  -webkit-overflow-scrolling: touch;
 }

@@ -3,6 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './stores/store';
+// Poppins bundled locally (no Google Fonts CDN fetch at runtime)
+import '@fontsource/poppins/400.css';
+import '@fontsource/poppins/500.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
 import './index.scss';
 import App from './App';
 import reportWebVitals from './reportWebVitals';

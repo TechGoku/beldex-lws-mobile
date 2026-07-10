@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchAutoHide: false,
-      backgroundColor: '#000000',
+      backgroundColor: '#1C1C26',
     },
     // Route WebView fetch/XHR through the native HTTP stack. The LWS server
     // sends no CORS headers (the web build needs a dev proxy for the same

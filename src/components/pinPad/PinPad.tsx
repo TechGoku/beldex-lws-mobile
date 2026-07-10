@@ -1,5 +1,5 @@
 import React from "react";
-import { Box, Typography } from "@mui/material";
+import { Box, ButtonBase, Typography } from "@mui/material";
 import BackspaceOutlinedIcon from "@mui/icons-material/BackspaceOutlined";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 
@@ -108,31 +108,27 @@ interface PadButtonProps {
 
 function PadButton({ children, onClick, disabled, variant = "digit" }: PadButtonProps) {
   return (
-    <Box
-      role="button"
+    <ButtonBase
       onClick={onClick}
+      disabled={disabled}
+      centerRipple
       sx={{
         height: 72,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
         borderRadius: "50%",
-        cursor: disabled ? "default" : "pointer",
-        userSelect: "none",
         opacity: disabled ? 0.4 : 1,
-        transition: "background-color 0.15s",
-        backgroundColor: (theme) =>
-          variant === "digit"
-            ? theme.palette.mode === "dark"
-              ? "#26263400"
-              : "#00000000"
-            : "transparent",
+        // Material ripple gives real touch feedback; keep a subtle pressed
+        // tint as well so it reads even on slow devices.
         "&:active": {
           backgroundColor: (theme) => (theme.palette.mode === "dark" ? "#32324A" : "#E8E8E8"),
         },
+        "& .MuiTouchRipple-child": {
+          backgroundColor: "#00D030",
+        },
       }}
     >
-      <Typography sx={{ fontSize: 28, fontWeight: 500 }}>{children}</Typography>
-    </Box>
+      <Typography sx={{ fontSize: 28, fontWeight: 500, color: "text.primary" }}>
+        {children}
+      </Typography>
+    </ButtonBase>
   );
 }

@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import seedDetailReducer from './features/seedDetailSlice';
 import addressBookReducer from './features/addressBookSlice';
 import securityReducer from './features/securitySlice';
+import walletsReducer from './features/walletsSlice';
 import storage from "redux-persist/lib/storage";
 // import { persistReducer } from "redux-persist";
 import { combineReducers } from "@reduxjs/toolkit";
@@ -21,16 +22,18 @@ const persistConfig = {
     key: 'root',
     version: 1,
     storage,
-    // addressBookReducer and securityReducer are backed by
-    // @capacitor/preferences (native local storage), not redux-persist -
-    // keep them out to avoid two copies / stale lock state.
-    blacklist: ['addressBookReducer', 'securityReducer']
+    // Nothing sensitive goes through redux-persist (WebView localStorage is
+    // plaintext). seedDetailReducer holds the active wallet's private keys, so
+    // it is NOT persisted here - it is restored on startup from the encrypted
+    // walletStore instead. The others are backed by their own native stores.
+    blacklist: ['seedDetailReducer', 'addressBookReducer', 'securityReducer', 'walletsReducer']
 }
 
 const reducer = combineReducers({
     seedDetailReducer,
     addressBookReducer,
-    securityReducer
+    securityReducer,
+    walletsReducer
 });
 
 const persistedReducer = persistReducer(persistConfig, reducer);

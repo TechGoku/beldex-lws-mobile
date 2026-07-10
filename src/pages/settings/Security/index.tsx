@@ -5,12 +5,16 @@ import {
   Switch,
   Modal,
   Button,
+  Select,
+  MenuItem,
   useTheme,
   useMediaQuery,
 } from "@mui/material";
 import OutboundIcon from "@mui/icons-material/Outbound";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import PinOutlinedIcon from "@mui/icons-material/PinOutlined";
+import TimerOutlinedIcon from "@mui/icons-material/TimerOutlined";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { useNavigate } from "react-router-dom";
 import PinSetup from "./PinSetup";
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg";
@@ -22,8 +26,17 @@ import {
   toggleBiometric,
   disableLock,
   pinConfigured,
+  setAutoLock,
 } from "../../../stores/features/securitySlice";
 import { authenticateBiometric } from "../../../services/biometric";
+
+const AUTO_LOCK_OPTIONS = [
+  { value: 0, label: "Only on exit" },
+  { value: 30, label: "After 30 seconds" },
+  { value: 60, label: "After 1 minute" },
+  { value: 300, label: "After 5 minutes" },
+  { value: 900, label: "After 15 minutes" },
+];
 
 export default function SecuritySettings() {
   const theme: any = useTheme();
@@ -181,6 +194,41 @@ export default function SecuritySettings() {
               disabled={!security.lockEnabled || !security.biometryAvailable}
               onChange={(e) => handleBiometricToggle(e.target.checked)}
             />
+          </Box>
+
+          {/* Auto-lock timeout */}
+          <Box sx={{ ...rowSx, opacity: security.lockEnabled ? 1 : 0.5, borderBottom: "none" }}>
+            <Box display="flex" alignItems="center" gap={2} sx={{ minWidth: 0 }}>
+              <TimerOutlinedIcon sx={{ color: "#00D030" }} />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 600 }}>Auto-Lock</Typography>
+                <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem" }}>
+                  Lock automatically when idle
+                </Typography>
+              </Box>
+            </Box>
+            <Select
+              size="small"
+              variant="standard"
+              disableUnderline
+              disabled={!security.lockEnabled}
+              IconComponent={KeyboardArrowDownIcon}
+              value={security.autoLockSeconds}
+              onChange={(e) => dispatch(setAutoLock(Number(e.target.value)))}
+              sx={{
+                minWidth: 130,
+                px: 1.5,
+                py: 0.5,
+                borderRadius: "10px",
+                color: theme.palette.text.primary,
+                backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+                "& .MuiSelect-icon": { color: theme.palette.text.primary },
+              }}
+            >
+              {AUTO_LOCK_OPTIONS.map((o) => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </Select>
           </Box>
         </Box>
       </Box>

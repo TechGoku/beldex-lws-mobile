@@ -131,22 +131,25 @@ export default function Balance() {
       </Box>
 
       <Box sx={{
-        display: 'flex', alignItems: 'baseline', marginTop: '12px', marginBottom: '24px'
+        display: 'flex', alignItems: 'baseline', marginTop: '12px', marginBottom: '24px',
+        flexWrap: 'wrap', maxWidth: '100%'
       }}>
         <Typography sx={{
           fontWeight: 600,
-          fontSize: '1.5rem',
+          fontSize: { xs: '1.3rem', sm: '1.5rem' },
           color: (theme) => theme.palette.text.primary,
-          lineHeight: 1
+          lineHeight: 1.2,
+          wordBreak: 'break-all',
+          minWidth: 0
         }}>
-          {totalBalance}
+          {totalBalance || '0'}
         </Typography>
         <Typography
           sx={{
             fontWeight: 600,
             color: (theme) => theme.palette.primary.main,
             marginLeft: '12px',
-            lineHeight: 1
+            lineHeight: 1.2
           }}
         >
           BDX
@@ -156,68 +159,76 @@ export default function Balance() {
       <Box sx={{
         backgroundColor: (theme) => theme.palette.mode === 'dark' ? '#1c1c26' : '#e0e0e0',
         borderRadius: '20px',
-        padding: '16px 24px',
+        padding: '16px 20px',
         display: 'flex',
-        alignItems: 'center',
-        gap: { xs: 2, md: 6 },
-        flexWrap: 'wrap',
+        // Stack the two balance rows on phones so long amounts never collide;
+        // side by side again from md up.
+        flexDirection: { xs: 'column', md: 'row' },
+        alignItems: { xs: 'stretch', md: 'center' },
+        gap: { xs: 1.5, md: 6 },
         width: '100%',
         maxWidth: '100%',
         boxSizing: 'border-box',
-        fontSize:'bold'
-
       }}>
         {/* Unlocked Balance */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00C708' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <Box sx={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#00C708' }} />
           <Typography sx={{
             color: (theme) => theme.palette.text.secondary,
-            fontSize: '15px',
-            whiteSpace: 'nowrap',
-            fontWeight: 'bold'
+            fontSize: '14px',
+            fontWeight: 'bold',
+            flexShrink: 0,
           }}>
-            Unlocked Balance
+            Unlocked
           </Typography>
           <Typography sx={{
             color: (theme) => theme.palette.text.primary,
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: 600,
-            ml: 0.5
+            ml: 'auto',
+            minWidth: 0,
+            wordBreak: 'break-all',
+            textAlign: 'right',
           }}>
-            {unlockedBalance}
+            {unlockedBalance || '0'}
           </Typography>
           <Typography sx={{
             color: (theme) => theme.palette.primary.main,
-            fontSize: '15px',
-            fontWeight: 600
+            fontSize: '14px',
+            fontWeight: 600,
+            flexShrink: 0,
           }}>
             BDX
           </Typography>
         </Box>
 
         {/* Locked Balance */}
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2879FB' }} />
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+          <Box sx={{ flexShrink: 0, width: 8, height: 8, borderRadius: '50%', backgroundColor: '#2879FB' }} />
           <Typography sx={{
             color: (theme) => theme.palette.text.secondary,
-            fontSize: '15px',
-            whiteSpace: 'nowrap',
-            fontWeight: 'bold'
+            fontSize: '14px',
+            fontWeight: 'bold',
+            flexShrink: 0,
           }}>
-            Locked Balance
+            Locked
           </Typography>
           <Typography sx={{
             color: (theme) => theme.palette.text.primary,
-            fontSize: '15px',
+            fontSize: '14px',
             fontWeight: 600,
-            ml: 0.5
+            ml: 'auto',
+            minWidth: 0,
+            wordBreak: 'break-all',
+            textAlign: 'right',
           }}>
             {lockedBalance ? beldex_amount_format_utils.formatMoney(new JSBigInt(lockedBalance)) : '0'}
           </Typography>
           <Typography sx={{
             color: (theme) => theme.palette.primary.main,
-            fontSize: '15px',
-            fontWeight: 600
+            fontSize: '14px',
+            fontWeight: 600,
+            flexShrink: 0,
           }}>
             BDX
           </Typography>

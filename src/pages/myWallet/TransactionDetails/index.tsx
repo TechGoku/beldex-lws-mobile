@@ -5,6 +5,7 @@ import OutboundIcon from "@mui/icons-material/Outbound";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useTheme } from "@emotion/react";
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg";
+import { copyToClipboard } from "../../../services/clipboard";
 const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
 
 export default function TransactionDetails(props: any) {
@@ -42,9 +43,8 @@ export default function TransactionDetails(props: any) {
       })
       ;
   };
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // await new Wallet().Login();
+  const copyText = async (text: string) => {
+    await copyToClipboard(text);
     handleShowToastMsg();
   };
 

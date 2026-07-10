@@ -6,12 +6,15 @@ import {
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import OutboundIcon from "@mui/icons-material/Outbound";
 import { useNavigate } from "react-router-dom";
 import coinImg from "../../../icons/coin.png";
 import HomeScreenDark from "../../../icons/Home_screen_dark.png";
 import HomeScreenLight from "../../../icons/Home_screen_light.png";
 import blueImg from "../../../icons/blue.png";
 import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
+import { useAppDispatch, useAppSelector } from "../../../stores/hooks";
+import { walletsSelector, endAddWallet } from "../../../stores/features/walletsSlice";
 const mnemonic_languages = require("@bdxi/beldex-locales");
 
 export default function Registration() {
@@ -19,16 +22,33 @@ export default function Registration() {
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
   const istabletMode = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
+  const { addingWallet } = useAppSelector(walletsSelector);
+
+  const cancelAdding = () => {
+    dispatch(endAddWallet());
+    navigate("/mywallet");
+  };
 
   return (
     <Box
       className="registration"
       sx={{
         display: "flex",
+        flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
       }}
     >
+      {addingWallet && (
+        <Box
+          sx={{ display: "flex", alignItems: "center", alignSelf: "flex-start", mt: 2, cursor: "pointer" }}
+          onClick={cancelAdding}
+        >
+          <OutboundIcon sx={{ transform: "rotate(225deg)", fontSize: "1.8rem" }} />
+          <Typography ml={1} sx={{ fontWeight: 600 }}>Back to wallet</Typography>
+        </Box>
+      )}
       <Box
         sx={{
           backgroundColor: theme.palette.success.main,

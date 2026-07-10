@@ -6,7 +6,10 @@ const Dotenv = require('dotenv-webpack')
 module.exports = {
   mode: 'production',
   entry: './src/index.tsx',
-  devtool: 'inline-source-map',
+  // No source maps in production: inline-source-map embedded the full map
+  // into index_bundle.js (11.4 MB -> WebView parses it all on every cold
+  // start, which made the app feel frozen on phones).
+  devtool: false,
   output: {
     path: path.join(__dirname, '/dist'),
     filename: 'index_bundle.js',
@@ -33,7 +36,7 @@ module.exports = {
       },
 
       {
-        test: /\.(jpe?g|png|gif|svg)$/i,
+        test: /\.(jpe?g|png|gif|svg|woff2?|ttf|eot)$/i,
         // test: /\.svg(\?.*)?$/,
         use: [
           {
@@ -43,6 +46,10 @@ module.exports = {
             }
           }
         ]
+      },
+      {
+        test: /\.css$/i,
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.s[ac]ss$/i,

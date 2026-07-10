@@ -20,6 +20,7 @@ import { seedDetailSelector, seedDetailState } from "../../../stores/features/se
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg";
 import Loader from "../../loader";
 import { getNetType } from "../../../services/runtimeConfig";
+import { copyToClipboard } from "../../../services/clipboard";
 const mnemonic_languages = require('@bdxi/beldex-locales');
 
 export default function DisplaySeed() {
@@ -47,9 +48,8 @@ export default function DisplaySeed() {
     }
   }, [coreBridgeInstance.beldex_utils])
 
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    // await new Wallet().Login();
+  const copyText = async (text: string) => {
+    await copyToClipboard(text);
     setIsCopied(true)
     handleShowToastMsg();
   };

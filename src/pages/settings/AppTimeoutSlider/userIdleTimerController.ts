@@ -1,139 +1,52 @@
-import { useState, useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
-import { useNavigate } from "react-router-dom";
-import { useAppDispatch } from "../../../stores/hooks";
-import {
-  initialState,
-  setSeedDetails,
-  setBalance,
-  setIdleTimer,
-  setUserLogout
-} from "../../../stores/features/seedDetailSlice";
+import { useEffect, useRef } from "react";
+import { useAppDispatch, useAppSelector } from "../../../stores/hooks";
+import { lockApp, securitySelector } from "../../../stores/features/securitySlice";
 
-
-interface UserIdleInWindowController {
-  isUserIdle: boolean;
-  EventName_userDidBecomeIdle: string;
-  EventName_userDidComeBackFromIdle: string;
-  disableUserIdle: () => void;
-  reEnableUserIdle: () => void;
-}
-
-const userIdleTimerController = (cb?: any): UserIdleInWindowController => {
+// Auto-lock controller. After `autoLockSeconds` of no interaction it LOCKS the
+// app (shows the PIN/biometric screen) instead of logging the wallet out.
+// lockApp() is itself a no-op unless a PIN is configured, so with no app lock
+// set the idle timer effectively does nothing.
+export default function userIdleTimerController(): void {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
-  const walletDetails = useSelector((state: any) => state.seedDetailReducer);
-  const timer = walletDetails.timer
+  const security = useAppSelector(securitySelector);
+  const { autoLockSeconds, lockEnabled, hasPin } = security;
 
-  // let timer=walletDetails.timer ;
-  const [isUserIdle, setIsUserIdle] = useState(false);
-  const numberOfSecondsSinceLastUserInteractionRef = useRef(0);
-  const numberOfRequestsToLockUserIdleAsDisabledRef = useRef(0);
-  const userIdleIntervalTimerRef = useRef<number | null | any>(null);
-  const userIdleSetTimerRef = useRef<number | null | any>(timer);
+  const secondsIdleRef = useRef(0);
+  const autoLockRef = useRef(autoLockSeconds);
+  autoLockRef.current = autoLockSeconds;
 
-
-  const EventName_userDidBecomeIdle = 'EventName_userDidBecomeIdle';
-  const EventName_userDidComeBackFromIdle = 'EventName_userDidComeBackFromIdle';
+  const activeRef = useRef(lockEnabled && hasPin);
+  activeRef.current = lockEnabled && hasPin;
 
   useEffect(() => {
-    const userDidInteract = (): void => {
-      numberOfSecondsSinceLastUserInteractionRef.current = 0;
+    const reset = () => {
+      secondsIdleRef.current = 0;
     };
+    document.addEventListener("click", reset);
+    document.addEventListener("mousemove", reset);
+    document.addEventListener("keydown", reset);
+    document.addEventListener("touchstart", reset);
 
-    document.onclick = userDidInteract;
-    document.onmousemove = userDidInteract;
-    document.onkeypress = userDidInteract;
-    initiateUserIdleIntervalTimer();
+    const interval = window.setInterval(() => {
+      // Not armed (no PIN) or set to "Never" -> do nothing.
+      if (!activeRef.current || !autoLockRef.current || autoLockRef.current <= 0) {
+        secondsIdleRef.current = 0;
+        return;
+      }
+      secondsIdleRef.current += 1;
+      if (secondsIdleRef.current >= autoLockRef.current) {
+        secondsIdleRef.current = 0;
+        dispatch(lockApp());
+      }
+    }, 1000);
 
     return () => {
-      disableUserIdle();
+      document.removeEventListener("click", reset);
+      document.removeEventListener("mousemove", reset);
+      document.removeEventListener("keydown", reset);
+      document.removeEventListener("touchstart", reset);
+      window.clearInterval(interval);
     };
-  }, []); // Empty dependency array means this useEffect runs once on mount
-
-  useEffect(() => {
-    userIdleSetTimerRef.current = timer
-
-    if (numberOfRequestsToLockUserIdleAsDisabledRef.current > 0) {
-      disableUserIdle();
-    } else {
-      reEnableUserIdle();
-    }
-  }, [numberOfRequestsToLockUserIdleAsDisabledRef.current, timer]);
-
-  const disableUserIdle = (): void => {
-    numberOfRequestsToLockUserIdleAsDisabledRef.current += 1;
-
-    if (numberOfRequestsToLockUserIdleAsDisabledRef.current === 1) {
-      console.log('⏳  Temporarily disabling the user idle timer.');
-      if (userIdleIntervalTimerRef.current !== null) {
-        clearInterval(userIdleIntervalTimerRef.current);
-        userIdleIntervalTimerRef.current = null;
-      }
-    } else {
-      console.log('⏳  Requested to temporarily disable user idle but already disabled. Incremented lock.');
-    }
-  };
-
-  const reEnableUserIdle = (): void => {
-    if (numberOfRequestsToLockUserIdleAsDisabledRef.current === 0) {
-      return;
-    }
-
-    numberOfRequestsToLockUserIdleAsDisabledRef.current -= 1;
-
-    if (numberOfRequestsToLockUserIdleAsDisabledRef.current === 0) {
-      console.log('⏳  Re-enabling the user idle timer.');
-      initiateUserIdleIntervalTimer();
-    } else {
-      console.log('⏳  Requested to re-enable user idle but other locks still exist.');
-    }
-  };
-
-  const initiateUserIdleIntervalTimer = (): void => {
-    if (userIdleIntervalTimerRef.current === null) {
-      userIdleIntervalTimerRef.current = setInterval(userIdleIntervalTimerFn, 1000);
-    }
-  };
-
-  const userIdleIntervalTimerFn = (): void => {
-    numberOfSecondsSinceLastUserInteractionRef.current += 1;
-    let appTimeoutAfterS: number = userIdleSetTimerRef.current || 120;
-    if (appTimeoutAfterS === 1500) {
-      return;
-    }
-    if (numberOfSecondsSinceLastUserInteractionRef.current >= userIdleSetTimerRef.current) {
-      if (!isUserIdle) {
-        userDidBecomeIdle();
-      }
-    }
-  };
-  const logout = () => {
-    dispatch(setUserLogout());
-    // dispatch(setBalance(0));
-    // dispatch(setIdleTimer(120))
-    navigate("/");
-  };
-
-  const userDidComeBackFromIdle = (): void => {
-    setIsUserIdle(false);
-    console.log('👀  User came back from having been idle.');
-  };
-
-  const userDidBecomeIdle = (): void => {
-    setIsUserIdle(true);
-
-    console.log('⏲  User became idle.');
-    logout();
-  };
-
-  return {
-    isUserIdle,
-    EventName_userDidBecomeIdle,
-    EventName_userDidComeBackFromIdle,
-    disableUserIdle,
-    reEnableUserIdle,
-  };
-};
-
-export default userIdleTimerController;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}

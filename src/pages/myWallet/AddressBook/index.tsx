@@ -17,6 +17,7 @@ import {
   updateSavedAddress,
 } from "../../../stores/features/addressBookSlice";
 import { SavedAddress } from "../../../services/addressBookStorage";
+import { copyToClipboard } from "../../../services/clipboard";
 
 interface AddressBookProps {
   // When provided, the address book acts as a picker: tapping a saved
@@ -119,9 +120,9 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
     showToast("Address removed", true);
   };
 
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showToast("Copied", true);
+  const copyText = async (text: string) => {
+    const ok = await copyToClipboard(text);
+    showToast(ok ? "Copied" : "Couldn't copy", ok);
   };
 
   const truncateAddress = (value: string) =>

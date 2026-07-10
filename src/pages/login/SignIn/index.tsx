@@ -14,6 +14,7 @@ import { useTheme } from "@emotion/react";
 import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
 import { useAppDispatch } from "../../../stores/hooks";
 import { setSeedDetails } from "../../../stores/features/seedDetailSlice";
+import { readClipboard } from "../../../services/clipboard";
 import loadingIcon from "../../../icons/loading.gif";
 
 export default function SignIn() {
@@ -126,7 +127,7 @@ export default function SignIn() {
   };
 
   const assignSeed = async () => {
-    const recoverySeed = await navigator.clipboard.readText();
+    const recoverySeed = await readClipboard();
     setUserMnemonic(recoverySeed);
   }
 

@@ -1,4 +1,4 @@
-import { Box, useTheme } from "@mui/material";
+import { Box, Fade, useTheme } from "@mui/material";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useState, useEffect } from "react";
 import SendFund from "./SendFund";
@@ -10,16 +10,39 @@ import BottomNav, { WalletTab } from "../../components/bottomNav/BottomNav";
 import userIdleTimerController from "../settings/AppTimeoutSlider/userIdleTimerController";
 import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { useAppDispatch } from "../../stores/hooks";
+import { registerActiveWallet } from "../../stores/features/walletsSlice";
 
 const MyWallet = () => {
   const theme: any = useTheme();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("md"));
   const walletDetails = useSelector((state: any) => state.seedDetailReducer);
-  walletDetails.timer !== 1500 && userIdleTimerController();
+  const dispatch = useAppDispatch();
+  // Auto-lock the app after inactivity (no-op unless a PIN is set).
+  userIdleTimerController();
 
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<WalletTab>("wallet");
   const [sendPrefill, setSendPrefill] = useState<{ address: string; paymentId?: string } | null>(null);
+
+  // Register the logged-in wallet into the saved-wallets list (no-op if it's
+  // already there). Every login path lands here, so this is the single hook.
+  useEffect(() => {
+    if (walletDetails.isLogin && walletDetails.address_string) {
+      dispatch(
+        registerActiveWallet({
+          address_string: walletDetails.address_string,
+          sec_viewKey_string: walletDetails.sec_viewKey_string,
+          pub_viewKey_string: walletDetails.pub_viewKey_string,
+          sec_spendKey_string: walletDetails.sec_spendKey_string,
+          pub_spendKey_string: walletDetails.pub_spendKey_string,
+          mnemonic_string: walletDetails.mnemonic_string,
+          sec_seed_string: walletDetails.sec_seed_string,
+          mnemonic_language: walletDetails.mnemonic_language,
+        })
+      );
+    }
+  }, [walletDetails.address_string, walletDetails.isLogin]);
 
   useEffect(() => {
     const handlePopstate = (event: any) => {
@@ -52,46 +75,51 @@ const MyWallet = () => {
           paddingBottom: "calc(80px + env(safe-area-inset-bottom))",
         }}
       >
-        {activeTab === "wallet" && (
-          <>
-            <Balance />
-            <WalletAddressAndKeys />
-          </>
-        )}
+        {/* key remounts the Fade per tab so each switch animates in */}
+        <Fade in key={activeTab} timeout={250}>
+          <Box>
+            {activeTab === "wallet" && (
+              <>
+                <Balance />
+                <WalletAddressAndKeys />
+              </>
+            )}
 
-        {activeTab === "send" && (
-          <Box
-            sx={{
-              background: theme.palette.success.main,
-              borderRadius: "25px",
-              padding: "20px 6px",
-            }}
-          >
-            <SendFund
-              prefill={sendPrefill}
-              onPrefillConsumed={() => setSendPrefill(null)}
-            />
+            {activeTab === "send" && (
+              <Box
+                sx={{
+                  background: theme.palette.success.main,
+                  borderRadius: "25px",
+                  padding: "20px 6px",
+                }}
+              >
+                <SendFund
+                  prefill={sendPrefill}
+                  onPrefillConsumed={() => setSendPrefill(null)}
+                />
+              </Box>
+            )}
+
+            {activeTab === "contacts" && (
+              <Box
+                sx={{
+                  background: theme.palette.background.paper,
+                  borderRadius: "20px",
+                  padding: "16px",
+                }}
+              >
+                <AddressBook
+                  onSelect={(entry) => {
+                    setSendPrefill({ address: entry.address, paymentId: entry.paymentId });
+                    setActiveTab("send");
+                  }}
+                />
+              </Box>
+            )}
+
+            {activeTab === "history" && <TransactionHistory />}
           </Box>
-        )}
-
-        {activeTab === "contacts" && (
-          <Box
-            sx={{
-              background: theme.palette.background.paper,
-              borderRadius: "20px",
-              padding: "16px",
-            }}
-          >
-            <AddressBook
-              onSelect={(entry) => {
-                setSendPrefill({ address: entry.address, paymentId: entry.paymentId });
-                setActiveTab("send");
-              }}
-            />
-          </Box>
-        )}
-
-        {activeTab === "history" && <TransactionHistory />}
+        </Fade>
 
         <BottomNav value={activeTab} onChange={setActiveTab} />
       </Box>

@@ -66,7 +66,7 @@ module.exports = {
       },
 
       {
-        test: /\.(jpe?g|png|gif|svg)$/i,
+        test: /\.(jpe?g|png|gif|svg|woff2?|ttf|eot)$/i,
         // test: /\.svg(\?.*)?$/,
         use: [
           {
@@ -76,6 +76,10 @@ module.exports = {
             }
           }
         ]
+      },
+      {
+        test: /\.css$/i,
+        use: ["style-loader", "css-loader"],
       },
       {
         test: /\.s[ac]ss$/i,

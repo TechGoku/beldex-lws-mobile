@@ -10,16 +10,21 @@ import ToastMsg, { ToastMsgRef } from "./components/snackbar/ToastMsg";
 import { useAppDispatch } from "./stores/hooks";
 import patchBeldexNetServiceUtils from "./utils/patchBeldexNetServiceUtils";
 import {
-  setUserLogout
+  setUserLogout,
+  setSeedDetails
 } from "./stores/features/seedDetailSlice";
 import { fetchSavedAddresses } from "./stores/features/addressBookSlice";
+import { fetchWallets } from "./stores/features/walletsSlice";
 import { initSecurity, lockApp, securitySelector } from "./stores/features/securitySlice";
 import { useAppSelector } from "./stores/hooks";
 import { hideSplashScreen } from "./services/nativeShell";
 import { loadRuntimeConfig, getApiUrl, getNetType } from "./services/runtimeConfig";
+import { applyProxyFromStorage } from "./services/proxy";
 import LockScreen from "./pages/lock";
 import probeServer from "./utils/netProbe";
 import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor } from "@capacitor/core";
+import BootScreen from "./components/bootScreen/BootScreen";
 const mnemonic_languages = require("@bdxi/beldex-locales");
 const appBridge = require("@bdxi/beldex-app-bridge");
 const HostedMoneroAPIClient = require("@bdxi/beldex-hosted-api");
@@ -95,15 +100,45 @@ function App() {
       dispatch(setUserLogout());
     };
 
-    window.addEventListener("beforeunload", alertUser);
+    // Web: log out when the tab closes (shared/public computers).
+    // Native: keep the session - the app is PIN/biometric gated instead, and
+    // being logged out on every launch makes the mobile app unusable.
+    if (!Capacitor.isNativePlatform()) {
+      window.addEventListener("beforeunload", alertUser);
+    }
 
     // Load persisted server config + lock state BEFORE building the WASM bridge
     // and API client, so both use the user's chosen endpoint/network.
     let removeStateListener: (() => void) | undefined;
     (async () => {
       await loadRuntimeConfig();
+      // Apply the user's proxy (if configured) before any API traffic.
+      await applyProxyFromStorage();
       dispatch(initSecurity());
       dispatch(fetchSavedAddresses());
+      // Restore the previously-active wallet from ENCRYPTED storage (seed keys
+      // are no longer kept in redux-persist's plaintext localStorage).
+      try {
+        const { wallets, activeId } = await dispatch(fetchWallets()).unwrap();
+        const active = wallets.find((w: any) => w.id === activeId);
+        if (active) {
+          dispatch(
+            setSeedDetails({
+              address_string: active.address_string,
+              sec_viewKey_string: active.sec_viewKey_string,
+              pub_viewKey_string: active.pub_viewKey_string,
+              sec_spendKey_string: active.sec_spendKey_string,
+              pub_spendKey_string: active.pub_spendKey_string,
+              mnemonic_string: active.mnemonic_string,
+              sec_seed_string: active.sec_seed_string,
+              mnemonic_language: active.mnemonic_language,
+              isLogin: true,
+            })
+          );
+        }
+      } catch {
+        /* no saved wallet - stay on the login screen */
+      }
       await getBridgeInstance();
       // Startup connectivity diagnostic - dev builds only (avoids two extra
       // requests to the server root on every production launch).
@@ -148,7 +183,11 @@ function App() {
   }
 
   if (isEmpty) {
-    return <div>Loading....</div>;
+    return (
+      <MUIWrapper>
+        <BootScreen />
+      </MUIWrapper>
+    );
   }
 
   return (

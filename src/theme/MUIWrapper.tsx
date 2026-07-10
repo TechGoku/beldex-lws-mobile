@@ -1,7 +1,8 @@
 import { createTheme, CssBaseline, GlobalStyles, ThemeProvider, useMediaQuery } from "@mui/material";
-import React, { createContext, useMemo, useState } from "react";
+import React, { createContext, useEffect, useMemo, useState } from "react";
 import { lightTheme } from "./light";
 import { darkTheme } from "./dark";
+import { applyStatusBarStyle } from "../services/nativeShell";
 /**
   TypeScript and React inconvenience:
   These functions are in here purely for types! 
@@ -19,6 +20,11 @@ export default function MUIWrapper({
     children: React.ReactNode;
   }) {
   const [mode, setMode] = useState("dark");
+
+  // Keep the native status bar in sync with the app theme.
+  useEffect(() => {
+    applyStatusBarStyle(mode === "dark");
+  }, [mode]);
   const muiWrapperUtils = useMemo(
     () => ({
       toggleColorMode: () => {

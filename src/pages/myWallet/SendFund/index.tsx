@@ -516,9 +516,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       setTxnStatus('Submiting Transaction.')
 
       coreBridgeInstance.hostedMoneroAPIClient.SubmitRawTx(req_params, cb);
-      console.log("submit_raw_tx_fn ::", req_params);
     };
-    console.log("argsargs::", args);
+    // NOTE: `args` contains the secret view/spend keys - never log it.
     coreBridgeInstance.beldex_utils.async__send_funds(args);
   };
 

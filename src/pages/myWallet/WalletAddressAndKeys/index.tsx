@@ -1,32 +1,28 @@
-import React, { useState, useRef } from "react";
-
+import React, { useRef } from "react";
 import "./styles.scss";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import { Box, useMediaQuery, Grid, IconButton } from "@mui/material";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { Box, useMediaQuery, IconButton } from "@mui/material";
 import Typography from "@mui/material/Typography";
-import ArrowRightIcon from "@mui/icons-material/ArrowRight";
 import { useTheme } from "@emotion/react";
 import { useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg";
+import { copyToClipboard } from "../../../services/clipboard";
 
+// Front wallet screen: address only. Secret keys and the recovery seed live on
+// the dedicated Account Details page (behind a warning), never on the home tab.
 export default function WalletAddressAndKeys() {
   const theme: any = useTheme();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
+  const navigate = useNavigate();
 
   const walletDetails = useSelector((state: any) => state.seedDetailReducer);
-  const [seedVisible, setSeedVisible] = useState(false);
   const toastMsgRef = useRef<ToastMsgRef>(null);
 
-
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-    handleShowToastMsg();
-  };
-
-  const handleShowToastMsg = () => {
-    if (toastMsgRef.current) {
-      toastMsgRef.current.showAlert("Copied ", "success");
-    }
+  const copyText = async (text: string) => {
+    const ok = await copyToClipboard(text);
+    toastMsgRef.current?.showAlert(ok ? "Copied" : "Couldn't copy", ok ? "success" : "error");
   };
 
   return (
@@ -34,182 +30,60 @@ export default function WalletAddressAndKeys() {
       className="WalletAddressAndKeys"
       sx={{
         marginTop: "20px",
-        padding:!seedVisible?"10px 20px" :"20px",
-        borderRadius: "12px",
-        backgroundColor:isMobileMode?(theme) => theme.palette.mode==="dark"?"#24242F":"#FCFCFC" :(theme) => theme.palette.background.default,
+        padding: "16px 20px",
+        borderRadius: "16px",
+        backgroundColor: isMobileMode
+          ? theme.palette.mode === "dark" ? "#24242F" : "#FCFCFC"
+          : theme.palette.background.default,
       }}
     >
       <Box
         sx={{
-          width: "100%",
-          color: "white",
           display: "flex",
           justifyContent: "space-between",
-          alignItems:'center',
-          position: "relative",
-          flexDirection: "row",
+          alignItems: "center",
+          gap: 1,
         }}
       >
-
-        <Box className={!seedVisible ? "address-wrapper" : ""} onClick={() => setSeedVisible(!seedVisible)} sx={{ cursor: 'pointer' }}>
-          <Typography
-            sx={{ fontWeight: 600, color: theme.palette.text.primary, fontSize: '18px' }}
-          >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography sx={{ fontWeight: 600, color: theme.palette.text.primary, fontSize: "18px" }}>
             Address
           </Typography>
           <Typography
-            className={
-              !seedVisible ? "address-without-key" : "address-with-key"
-            }
             sx={{
-              color: (theme: any) => theme.palette.text.secondary,
-              fontSize: '14px',
-              marginTop: '4px'
+              color: theme.palette.text.secondary,
+              fontSize: "14px",
+              marginTop: "4px",
+              wordBreak: "break-all",
             }}
           >
             {walletDetails.address_string}
           </Typography>
         </Box>
-        <Box display="flex" flexDirection="row" alignItems={"center"}>
-          <IconButton onClick={() => copyText(walletDetails.address_string)}>
-            <ContentCopyIcon
-              className="copyIcon"
-              sx={{ fontSize: "1.4rem", cursor: "pointer", color: theme.palette.primary.main }}
-            ></ContentCopyIcon>
-          </IconButton>
-          <ArrowRightIcon
-            sx={{ fill: "#8787A8", cursor: "pointer", fontSize: '2rem' }}
-            className={seedVisible ? "rotate" : "rotateUp"}
-            onClick={() => setSeedVisible(!seedVisible)}
-          />
-        </Box>
+        <IconButton onClick={() => copyText(walletDetails.address_string)} sx={{ flexShrink: 0 }}>
+          <ContentCopyIcon sx={{ fontSize: "1.4rem", color: theme.palette.primary.main }} />
+        </IconButton>
       </Box>
 
-      <Box className={!seedVisible ? "d-none" : "d-block"}>
-        <Box
-          display="flex"
-          flexDirection="row"
-          justifyContent="space-between"
-          sx={{ width: "100%" }}
-          mt={2}
-        >
-          <Box>
-            <Typography
-              sx={{ fontWeight: 600, color: theme.palette.text.primary }}
-            >
-              Secret View Key
-            </Typography>
-            <Typography
-              sx={{
-                color: theme.palette.text.secondary,
-                wordBreak: "break-all",
-                fontWeight: 400,
-                width: "85%",
-              }}
-              mt={1}
-            >
-              {walletDetails.sec_viewKey_string}
-            </Typography>
-          </Box>
-          <Box>
-            <IconButton
-              sx={{ marginRight: "20px" }}
-              onClick={() => copyText(walletDetails.sec_viewKey_string)}
-            >
-              <ContentCopyIcon
-                className="copyIcon"
-                sx={{
-                  fontSize: "1.4rem",
-
-                  // cursor: "pointer",
-                }}
-              ></ContentCopyIcon>
-            </IconButton>
-          </Box>
-        </Box>
-
-        <Box
-          display="flex"
-          flexDirection="row"
-          justifyContent="space-between"
-          sx={{ width: "100%" }}
-          mt={2}
-        >
-          <Box>
-            <Typography
-              sx={{ fontWeight: 600, color: theme.palette.text.primary }}
-            >
-              Secret Spend Key
-            </Typography>
-            <Typography
-              sx={{
-                color: theme.palette.text.secondary,
-                wordBreak: "break-all",
-                fontWeight: 400,
-                width: "85%",
-              }}
-              mt={1}
-            >
-              {walletDetails.sec_spendKey_string}
-            </Typography>
-          </Box>
-          <Box>
-            <IconButton
-              sx={{ marginRight: "20px" }}
-              onClick={() => copyText(walletDetails.sec_spendKey_string)}
-            >
-              <ContentCopyIcon
-                className="copyIcon"
-                sx={{
-                  fontSize: "1.4rem",
-                }}
-              ></ContentCopyIcon>
-            </IconButton>
-          </Box>
-        </Box>
-
-        <Box
-          display="flex"
-          flexDirection="row"
-          justifyContent="space-between"
-          sx={{ width: "100%" }}
-          mt={2}
-        >
-          <Box>
-            <Typography
-              sx={{ fontWeight: 600, color: theme.palette.text.primary }}
-            >
-              Recovery Seed
-            </Typography>
-            <Typography
-              sx={{
-                color: (theme) => theme.palette.text.secondary,
-                wordBreak: "break-word",
-                fontWeight: 400,
-                width: "85%",
-              }}
-              mt={1}
-            >
-              {walletDetails.mnemonic_string}
-            </Typography>
-          </Box>
-          <Box>
-          <IconButton
-            sx={{ marginRight: "20px" }}
-            onClick={() => copyText(walletDetails.mnemonic_string)}
-          >
-
-              <ContentCopyIcon
-                className="copyIcon"
-                sx={{
-                  fontSize: "1.4rem",
-                
-                }}
-              ></ContentCopyIcon>
-            </IconButton>
-          </Box>
-        </Box>
+      {/* Link to full account details (keys + seed behind a warning) */}
+      <Box
+        onClick={() => navigate("/account")}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mt: 2,
+          pt: 2,
+          borderTop: `1px solid ${theme.palette.mode === "dark" ? "#32324A" : "#ECECEC"}`,
+          cursor: "pointer",
+        }}
+      >
+        <Typography sx={{ color: theme.palette.primary.main, fontWeight: 600 }}>
+          Account details & keys
+        </Typography>
+        <ChevronRightIcon sx={{ color: theme.palette.primary.main }} />
       </Box>
+
       <ToastMsg ref={toastMsgRef} />
     </Box>
   );

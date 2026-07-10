@@ -5,6 +5,7 @@ import {
   loadAppLockState,
   disableAppLock as storageDisableAppLock,
   setBiometricEnabled as storageSetBiometricEnabled,
+  setAutoLockSeconds as storageSetAutoLock,
 } from "../../services/appLockStorage";
 import { getBiometryInfo } from "../../services/biometric";
 
@@ -17,6 +18,8 @@ export interface SecurityState {
   biometryLabel: string;
   // Whether the lock screen is currently blocking the app.
   isLocked: boolean;
+  // Idle timeout (seconds) before auto-lock; 0 = never auto-lock on idle.
+  autoLockSeconds: number;
   loaded: boolean;
 }
 
@@ -27,6 +30,7 @@ const initialState: SecurityState = {
   biometryAvailable: false,
   biometryLabel: "Biometrics",
   isLocked: false,
+  autoLockSeconds: 60,
   loaded: false,
 };
 
@@ -53,6 +57,14 @@ export const toggleBiometric = createAsyncThunk(
 export const disableLock = createAsyncThunk("security/disableLock", async () => {
   await storageDisableAppLock();
 });
+
+export const setAutoLock = createAsyncThunk(
+  "security/setAutoLock",
+  async (seconds: number) => {
+    await storageSetAutoLock(seconds);
+    return seconds;
+  }
+);
 
 const securitySlice = createSlice({
   name: "security",
@@ -83,6 +95,7 @@ const securitySlice = createSlice({
       state.biometricEnabled = lock.biometricEnabled && biometry.available;
       state.biometryAvailable = biometry.available;
       state.biometryLabel = biometry.label;
+      state.autoLockSeconds = lock.autoLockSeconds;
       state.loaded = true;
     };
     builder
@@ -94,6 +107,9 @@ const securitySlice = createSlice({
       .addCase(refreshSecurity.fulfilled, applyLoad)
       .addCase(toggleBiometric.fulfilled, (state, action) => {
         state.biometricEnabled = action.payload;
+      })
+      .addCase(setAutoLock.fulfilled, (state, action) => {
+        state.autoLockSeconds = action.payload;
       })
       .addCase(disableLock.fulfilled, (state) => {
         state.lockEnabled = false;
