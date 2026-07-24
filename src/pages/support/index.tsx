@@ -1,11 +1,9 @@
 import { Box, Typography, useTheme, useMediaQuery } from "@mui/material";
 import SupportIcon from "../../icons/SupportIcon";
-import SupportIconWhite from "../../icons/SupportIconWhite";
 import GitHupDark from "../../icons/GitHupDark";
-import GitHupWhite from "../../icons/GitHupWhite";
 import TelegramIcon from "../../icons/TelegramIcon";
 import DiscordDark from "../../icons/DiscordDark";
-import DiscordWhite from "../../icons/DiscordWhite";
+import { rf } from "../../utils/responsiveFont";
 const Support = () => {
   const theme: any = useTheme();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
@@ -16,18 +14,22 @@ const Support = () => {
   };
 
   const iconBoxStyle = {
-    backgroundColor: theme.palette.mode === "dark" ? "#323243" : '#E5E5E5',
-    width: "100px",
-    height: "100px",
-    borderRadius: "20px",
+    // Blend with the app's dot-grid background instead of sitting inside a flat
+    // grey card. A subtle hover wash keeps the tap affordance.
+    backgroundColor: "transparent",
+    width: { xs: "78px", sm: "100px" },
+    height: { xs: "78px", sm: "100px" },
+    borderRadius: "12px",
     textAlign: "center",
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'column',
+    gap: 0.75,
     cursor: 'pointer',
+    transition: "background-color 0.2s ease",
     "&:hover": {
-      backgroundColor: theme.palette.mode === "dark" ? '#3F3F53' : '#FAFAFA'
+      backgroundColor: "rgba(255, 255, 255, 0.05)"
     }
   }
 
@@ -37,14 +39,14 @@ const Support = () => {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
-      <Box sx={{ height: "calc(100vh - 107px)", overflowY: "auto" }}>
+      <Box sx={{ height: "calc(100dvh - 107px)", overflowY: "auto" }}>
         {/* <Typography
         sx={{
           color: theme.palette.text.primary,
-          fontSize: "20px",
+          fontSize: rf(20),
           fontWeight: 700,
           margin:isMobileMode?"40px 40px 0": "40px 40px 25px",
           textAlign:'center'
@@ -55,7 +57,7 @@ const Support = () => {
         <Box
           sx={{
             color: theme.palette.text.primary,
-            fontSize: "20px",
+            fontSize: rf(20),
             margin: isMobileMode ? 'unset' : "0px 40px 40px",
             display: "flex",
             justifyContent: "center",
@@ -65,22 +67,14 @@ const Support = () => {
           }}
         >
           <Box>
-          {theme.palette.mode === "dark" ? (
-            <SupportIcon sx={{ width:isMobileMode?'20rem':"23rem", height:isMobileMode?'20rem':"20rem"}} />
-          ) : (
-            <SupportIconWhite sx={{ width:isMobileMode?'20rem':"23rem", height:isMobileMode?'20rem':"20rem"}} />
-          )}
+            <SupportIcon sx={{ width:isMobileMode?'clamp(140px, 50vw, 220px)':"23rem", height:isMobileMode?'clamp(140px, 50vw, 220px)':"20rem"}} />
           </Box>
-          <Box mt={1} sx={{ display: "flex", width: isMobileMode ? "352px" : '425px', marginX: "auto", justifyContent: 'space-around' }}>
+          <Box mt={1} sx={{ display: "flex", width: isMobileMode ? "100%" : '425px', maxWidth: isMobileMode ? "340px" : "425px", marginX: "auto", justifyContent: 'space-around', gap: 1 }}>
             <Box
               sx={iconBoxStyle}
               onClick={() => handleOpenNewTab('https://discord.com/invite/Hj4MAmA5gs')}
             >
-              {theme.palette.mode === "dark" ? (
-                <DiscordDark sx={{ width: "3rem", height: "3rem" }} />
-              ) : (
-                <DiscordWhite sx={{ width: "3rem", height: "3rem" }} />
-              )}
+              <DiscordDark sx={{ width: "3rem", height: "3rem" }} />
               <Typography sx={{ textAlign: "center" }}>Discord</Typography>
             </Box>
             <Box
@@ -99,11 +93,7 @@ const Support = () => {
               onClick={() => handleOpenNewTab('https://github.com/Beldex-Coin/beldex-lws-frontend')}
 
             >
-              {theme.palette.mode === "dark" ? (
-                <GitHupDark sx={{ width: "3rem", height: "3rem" }} />
-              ) : (
-                <GitHupWhite sx={{ width: "3rem", height: "3rem" }} />
-              )}
+              <GitHupDark sx={{ width: "3rem", height: "3rem" }} />
               <Typography sx={{ textAlign: "center" }}>Github</Typography>
             </Box>
           </Box>
@@ -119,7 +109,7 @@ const Support = () => {
            <Typography component={'span'} sx={{fontWeight:600,fontSize:'1.2rem'}}>Discord </Typography>:  https://discord.com/invite/Hj4MAmA5gs
           </Typography>
           <Typography mt={2}> <Typography component={'span'} sx={{fontWeight:600,fontSize:'1.2rem'}}>Telegram </Typography> : https://t.me/official_beldex</Typography>
-          <Typography mt={2} sx={{color:'#19AD1C'}}><Typography component={'span'} sx={{color:(theme)=>theme.palette.text.primary, fontWeight:600,fontSize:'1.2rem'}}>E-mail </Typography>: support@beldex.io</Typography> */}
+          <Typography mt={2} sx={{color:'#2fa236'}}><Typography component={'span'} sx={{color:(theme)=>theme.palette.text.primary, fontWeight:600,fontSize:'1.2rem'}}>E-mail </Typography>: support@beldex.io</Typography> */}
           {/* </Box> */}
         </Box>
       </Box>

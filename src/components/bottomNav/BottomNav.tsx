@@ -26,7 +26,9 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
         left: 0,
         right: 0,
         zIndex: (theme) => theme.zIndex.appBar,
-        borderRadius: "20px 20px 0 0",
+        borderRadius: 0,
+        borderTop: "1px solid",
+        borderColor: "divider",
         overflow: "hidden",
         // keep the bar clear of iOS home indicator / Android gesture area
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -41,12 +43,12 @@ export default function BottomNav({ value, onChange }: BottomNavProps) {
           background: "transparent",
           height: "64px",
           "& .MuiBottomNavigationAction-root": {
-            color: "#8787A8",
+            color: (theme) => theme.palette.text.secondary,
             minWidth: "64px",
           },
           "& .Mui-selected, & .Mui-selected .MuiBottomNavigationAction-label": {
-            color: "#00D030",
-            fontWeight: 600,
+            color: (theme) => theme.palette.primary.main,
+            fontWeight: 700,
           },
         }}
       >

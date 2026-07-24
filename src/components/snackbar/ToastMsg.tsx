@@ -24,11 +24,11 @@ const ToastMsg: React.ForwardRefRenderFunction<ToastMsgRef> = (_, ref) => {
   const colorSelector=(status:String)=>{
    if(status==='success')
    {
-    return "#00AD07"
+    return "#2e9e38"
    }
    if(status==='error')
    {
-    return "#FC2727"
+    return "#ff5c5c"
    }
   }
   const handleClose = () => {
@@ -50,10 +50,10 @@ const ToastMsg: React.ForwardRefRenderFunction<ToastMsgRef> = (_, ref) => {
       {/* <Alert onClose={handleClose} severity="success" sx={{ width: '100%' }}>
           This is a success message!
         </Alert> */}
-        <Box sx={{backgroundColor:theme.palette.mode==="dark"?'#242433':"#F0F0F0",padding:'10px 20px',borderRadius:'10px'}} display={'flex'} flexDirection={'row'} alignItems={'center'} justifyContent={'space-between'}>
+        <Box sx={{backgroundColor:theme.palette.mode==="dark"?'#101010':"#FFFFFF",boxShadow:theme.palette.mode==="dark"?'none':'0 2px 12px rgba(0,0,0,0.12)',padding:'10px 20px',borderRadius:'0px'}} display={'flex'} flexDirection={'row'} alignItems={'center'} justifyContent={'space-between'}>
        {/* <Typography>{message}</Typography> */}
-      {severity === "success" && <CheckCircleIcon sx={{color:'#00AD07',mr:'5px',fontSize:'1.2rem'}} />}
-      {severity === "error" && <ReportProblemIcon sx={{color:'#FC2727',mr:'5px',fontSize:'1.2rem'}}/>}
+      {severity === "success" && <CheckCircleIcon sx={{color:'#2e9e38',mr:'5px',fontSize:'1.2rem'}} />}
+      {severity === "error" && <ReportProblemIcon sx={{color:'#ff5c5c',mr:'5px',fontSize:'1.2rem'}}/>}
        <Typography sx={{fontWeight:'500',fontSize:'1.1rem',color:colorSelector(severity)}}>{message}</Typography>
 
        {/* <IconButton

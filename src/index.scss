@@ -1,17 +1,51 @@
-// Poppins is bundled locally via @fontsource/poppins (imported in index.tsx).
-// Do NOT @import it from Google Fonts here: that adds a render-blocking
-// network fetch on every cold start, and fails entirely on offline /
-// filtered networks.
+// Fonts are bundled locally (extension brand fonts below, Poppins fallback
+// via @fontsource/poppins imported in index.tsx).
+// Do NOT @import fonts from Google Fonts or a CDN here: that adds a
+// render-blocking network fetch on every cold start, and fails entirely on
+// offline / filtered networks.
+
+// Beldex extension brand fonts: Michroma for display/headings,
+// Space Mono for body/numeric text.
+@font-face {
+  font-family: 'Michroma';
+  src: url('./fonts/michroma-400.woff2') format('woff2');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('./fonts/space-mono-400.woff2') format('woff2');
+  font-weight: 400 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  src: url('./fonts/space-mono-700.woff2') format('woff2');
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 html,
 body {
-  font-family: 'Poppins', 'Roboto', sans-serif;
+  font-family: 'Space Mono', 'Poppins', 'Roboto', monospace, sans-serif;
+  // Dark canvas (matches darkTheme background.default) painted before React
+  // mounts, so a full reload - e.g. after switching server - never flashes a
+  // white WebView between teardown and the branded boot screen.
+  background-color: #0a0a0a;
   // App-like feel inside the WebView:
   -webkit-tap-highlight-color: transparent; // no grey flash on taps
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none; // no rubber-band/pull-to-refresh glow
   touch-action: manipulation; // no 300ms double-tap-zoom delay
+  // decorative elements (login-page floating coins) must never create a
+  // sideways-scrollable page
+  overflow-x: hidden;
 }
 
 // UI chrome shouldn't be text-selectable (long-press selection looks broken

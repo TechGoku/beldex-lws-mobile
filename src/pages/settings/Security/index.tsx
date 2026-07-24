@@ -94,7 +94,7 @@ export default function SecuritySettings() {
     alignItems: "center",
     justifyContent: "space-between",
     padding: "16px 0",
-    borderBottom: (t: any) => `1px solid ${t.palette.mode === "dark" ? "#32324A" : "#E5E5E5"}`,
+    borderBottom: (t: any) => `1px solid ${t.palette.mode === "dark" ? "#222222" : "#E5E5E5"}`,
   };
 
   const modalStyle = {
@@ -103,10 +103,11 @@ export default function SecuritySettings() {
     left: "50%",
     transform: "translate(-50%, -50%)",
     width: isMobileMode ? 320 : 440,
+    maxWidth: "92vw",
     bgcolor: theme.palette.background.paper,
     boxShadow: 24,
     p: 4,
-    borderRadius: "22px",
+    borderRadius: "0px",
   };
 
   return (
@@ -115,7 +116,7 @@ export default function SecuritySettings() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box sx={{ padding: isMobileMode ? "0" : "25px" }}>
@@ -140,7 +141,7 @@ export default function SecuritySettings() {
           {/* App lock */}
           <Box sx={rowSx}>
             <Box display="flex" alignItems="center" gap={2}>
-              <PinOutlinedIcon sx={{ color: "#00D030" }} />
+              <PinOutlinedIcon sx={{ color: "#3ec745" }} />
               <Box>
                 <Typography sx={{ fontWeight: 600 }}>App Lock (PIN)</Typography>
                 <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem" }}>
@@ -166,7 +167,7 @@ export default function SecuritySettings() {
               <Button
                 variant="contained"
                 color="secondary"
-                sx={{ borderRadius: "10px", color: theme.palette.text.primary }}
+                sx={{ borderRadius: "0px", color: theme.palette.text.primary }}
                 onClick={() => setPinSetupOpen(true)}
               >
                 Change
@@ -177,7 +178,7 @@ export default function SecuritySettings() {
           {/* Biometric */}
           <Box sx={{ ...rowSx, opacity: security.lockEnabled && security.biometryAvailable ? 1 : 0.5 }}>
             <Box display="flex" alignItems="center" gap={2}>
-              <FingerprintIcon sx={{ color: "#00D030" }} />
+              <FingerprintIcon sx={{ color: "#3ec745" }} />
               <Box>
                 <Typography sx={{ fontWeight: 600 }}>{security.biometryLabel} Unlock</Typography>
                 <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem" }}>
@@ -199,7 +200,7 @@ export default function SecuritySettings() {
           {/* Auto-lock timeout */}
           <Box sx={{ ...rowSx, opacity: security.lockEnabled ? 1 : 0.5, borderBottom: "none" }}>
             <Box display="flex" alignItems="center" gap={2} sx={{ minWidth: 0 }}>
-              <TimerOutlinedIcon sx={{ color: "#00D030" }} />
+              <TimerOutlinedIcon sx={{ color: "#3ec745" }} />
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600 }}>Auto-Lock</Typography>
                 <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.8rem" }}>
@@ -219,9 +220,9 @@ export default function SecuritySettings() {
                 minWidth: 130,
                 px: 1.5,
                 py: 0.5,
-                borderRadius: "10px",
+                borderRadius: "0px",
                 color: theme.palette.text.primary,
-                backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+                backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
                 "& .MuiSelect-icon": { color: theme.palette.text.primary },
               }}
             >
@@ -249,11 +250,11 @@ export default function SecuritySettings() {
           <Typography textAlign="center" sx={{ mt: 1, color: theme.palette.text.secondary }}>
             Your PIN and biometric unlock will be removed.
           </Typography>
-          <Box display="flex" justifyContent="center" mt={4} gap={2}>
+          <Box display="flex" justifyContent="center" flexWrap="wrap" mt={4} gap={2}>
             <Button
               variant="contained"
               color="secondary"
-              sx={{ borderRadius: "10px", width: 140, color: theme.palette.text.primary }}
+              sx={{ borderRadius: "0px", width: 140, color: theme.palette.text.primary }}
               onClick={() => setConfirmDisableOpen(false)}
             >
               Cancel
@@ -261,7 +262,7 @@ export default function SecuritySettings() {
             <Button
               variant="contained"
               color="error"
-              sx={{ borderRadius: "10px", width: 140, color: "#fff" }}
+              sx={{ borderRadius: "0px", width: 140 }}
               onClick={handleDisable}
             >
               Disable

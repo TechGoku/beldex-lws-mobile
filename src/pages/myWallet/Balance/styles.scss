@@ -1,8 +1,8 @@
 .Balance {
   .header {
-    background-color: #303041;
+    background-color: #161616;
 
-    border-radius: 15px;
+    border-radius: 0;
     padding: 16px 24px;
     display: flex;
     flex-direction: 'row';
@@ -29,7 +29,7 @@
     color: #ffffff;
 
     .currency {
-      color: #20d030;
+      color: #3ec745;
       margin-right: 5px;
       margin-left: 5px;
     }

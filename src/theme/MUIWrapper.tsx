@@ -1,15 +1,10 @@
-import { createTheme, CssBaseline, GlobalStyles, ThemeProvider, useMediaQuery } from "@mui/material";
-import React, { createContext, useEffect, useMemo, useState } from "react";
-import { lightTheme } from "./light";
+import { createTheme, CssBaseline, GlobalStyles, ThemeProvider } from "@mui/material";
+import React, { createContext, useEffect, useMemo } from "react";
 import { darkTheme } from "./dark";
 import { applyStatusBarStyle } from "../services/nativeShell";
 /**
-  TypeScript and React inconvenience:
-  These functions are in here purely for types! 
-  They will be overwritten - it's just that
-  createContext must have an initial value.
-  Providing a type that could be 'null | something' 
-  and initiating it with *null* would be uncomfortable :)
+  Kept for API compatibility with the (few) components that still read this
+  context. The app is dark-only, so toggleColorMode is intentionally a no-op.
 */
 export const MUIWrapperContext = createContext({
   toggleColorMode: () => { },
@@ -19,43 +14,33 @@ export default function MUIWrapper({
   children }: {
     children: React.ReactNode;
   }) {
-  const [mode, setMode] = useState("dark");
-
-  // Keep the native status bar in sync with the app theme.
+  // The app ships dark-only; the light theme was removed.
   useEffect(() => {
-    applyStatusBarStyle(mode === "dark");
-  }, [mode]);
+    applyStatusBarStyle(true);
+  }, []);
+
   const muiWrapperUtils = useMemo(
     () => ({
-      toggleColorMode: () => {
-        setMode((prevMode) => (prevMode === "light" ? "dark" : "light"));
-      },
+      toggleColorMode: () => { },
     }),
     []
   );
 
-  // const theme = useMemo(
-  //   () => createTheme(mode === "light" ? lightTheme : darkTheme,{
-  //     typography: {
-  //       fontSize: 16, // Set the default font size
-  //       // You can customize other typography options here
-  //     },),
-  //   [mode]
-  // );
-  const theme = useMemo(
-    () =>
-      createTheme(
-        {
-          ...(mode === "light" ? lightTheme : darkTheme),
-          typography: {
-            fontSize: 12,
-          
-          },
-        },
-        [mode]
-      ),
-    [mode]
-  );
+  const theme = useMemo(() => {
+    return createTheme({
+      ...darkTheme,
+      // Merge, don't replace: darkTheme.typography carries the extension font
+      // stack (Space Mono body, Michroma headings).
+      typography: {
+        ...darkTheme.typography,
+        // MUI default (14) rather than 12: components that don't opt into the
+        // fluid rf() sizes (default Typography body, MenuItem, Chip, TextField
+        // helper text) inherit this base, so 12 left them below the readable
+        // baseline on high-DPI phones. Screens using rf() are unaffected.
+        fontSize: 14,
+      },
+    });
+  }, []);
 
   return (
     <MUIWrapperContext.Provider value={muiWrapperUtils}>
@@ -63,34 +48,24 @@ export default function MUIWrapper({
         <CssBaseline />
         <GlobalStyles
           styles={{
+            // The extension's dot-grid canvas (from beldex.io), dark tint.
+            body: {
+              backgroundImage:
+                "radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1.5px)",
+              backgroundSize: "26px 26px",
+            },
             "*::-webkit-scrollbar": {
-              width: "5px",
+              width: "4px",
             },
             "*::-webkit-scrollbar-track": {
-              // "-webkit-box-shadow": "inset 0 0 5px grey",
-              // boxShadow: "inset 0 0 5px grey",
-              borderRadius: "10px",
-              backgroundColor:
-                theme.palette.mode == "dark"
-                  ? theme.palette.background.default
-                  : "#F2F2F2",
+              backgroundColor: "transparent",
             },
             "*::-webkit-scrollbar-thumb": {
-              background:
-                theme.palette.mode == "dark" ? "#585870" : "#C7C7C7",
-              borderRadius: "10px",
+              background: "#2a2a2a",
             },
             "*::-webkit-scrollbar-thumb:hover": {
-              background:
-                theme.palette.mode == "dark" ? "#585870" : "#C7C7C7",
+              background: "#2a2a2a",
             },
-            "& .MuiButton-root": {
-              textTransform: 'capitalize !important',
-
-            },
-            "& .MuiButton-containedPrimary:hover": {
-              opacity: 0.7
-            }
           }}
         />
         {children}

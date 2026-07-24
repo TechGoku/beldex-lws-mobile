@@ -7,12 +7,8 @@ import ListItemButton from "@mui/material/ListItemButton";
 import KeyboardArrowRightRoundedIcon from "@mui/icons-material/KeyboardArrowRightRounded";
 import InboxIcon from "@mui/icons-material/Inbox";
 import DraftsIcon from "@mui/icons-material/Drafts";
-import { styled } from "@mui/material/styles";
-import ListItem from "@mui/material/ListItem";
 import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
-import Switch from "@mui/material/Switch";
-import MoonDark from '../../icons/MoonDark';
 
 import Privacy from '../../icons/Privacy';
 import Term from '../../icons/Terms';
@@ -21,58 +17,13 @@ import Website from '../../icons/Website';
 import MyWallet from '../../icons/MyWallet';
 import { ColorContext } from '../../ColorContext';
 import { useSelector } from "react-redux";
-import { MUIWrapperContext } from "../../theme/MUIWrapper";
-
-
-const AntSwitch = styled(Switch)(({ theme }) => ({
-  width: 28,
-  height: 16,
-  padding: 0,
-  display: "flex",
-  "&:active": {
-    "& .MuiSwitch-thumb": {
-      width: 15
-    },
-    "& .MuiSwitch-switchBase.Mui-checked": {
-      transform: "translateX(9px)"
-    }
-  },
-  "& .MuiSwitch-switchBase": {
-    padding: 2,
-    "&.Mui-checked": {
-      transform: "translateX(12px)",
-      color: "#fff",
-      "& + .MuiSwitch-track": {
-        opacity: 1,
-        backgroundColor: theme.palette.mode === "light" ? "#00AD07" : "#00D030"
-      }
-    }
-  },
-  "& .MuiSwitch-thumb": {
-    boxShadow: "0 2px 4px 0 rgb(0 35 11 / 20%)",
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    transition: theme.transitions.create(["width"], {
-      duration: 200
-    })
-  },
-  "& .MuiSwitch-track": {
-    borderRadius: 16 / 2,
-    opacity: 1,
-    backgroundColor: theme.palette.text.secondary,
-    boxSizing: "border-box"
-  }
-}));
 
 export default function NavBar() {
-  const [checked, setChecked] = React.useState(["dark"]);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const walletDetails = useSelector((state: any) => state.seedDetailReducer);
   const routerPath = ['/mywallet', '/privacy', '/terms', "/support"]
-  const muiUtils: any = React.useContext(MUIWrapperContext);
   const theme = useTheme();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
   useEffect(() => {
@@ -87,18 +38,6 @@ export default function NavBar() {
     if (index < 5) navigate(routerPath[index]);
 
   };
-  const handleToggle = (value: string) => () => {
-    const currentIndex = checked.indexOf(value);
-    const newChecked = [...checked];
-
-    if (currentIndex === -1) {
-      newChecked.push(value);
-    } else {
-      newChecked.splice(currentIndex, 1);
-    }
-
-    setChecked(newChecked);
-  };
 
   const getTextColor = (theme: any, selectedInd: number) => {
     if (theme.palette.mode === 'dark') {
@@ -111,14 +50,14 @@ export default function NavBar() {
     return <></>
   }
   return (
-    <Box sx={{ minWidth: '225px', background: (theme) => theme.palette.background.paper, borderRadius: '25px' }}>
+    <Box sx={{ minWidth: '225px', background: (theme) => theme.palette.background.paper, borderRadius: '0px' }}>
       <List
         sx={{
           // width: "100%",
           // maxWidth: 360,
           padding: 2,
           bgcolor: (theme) => theme.palette.background.paper,
-          borderRadius: '25px',
+          borderRadius: '0px',
           height: "100%",
           display: "flex",
           flexDirection: "column"
@@ -133,17 +72,17 @@ export default function NavBar() {
             maxHeight: "60px",
             "&.Mui-selected": {
               background: (theme) => theme.palette.common.white,
-              borderRadius: "15px",
+              borderRadius: "0px",
               "&:hover": {
                 background: (theme) => theme.palette.common.white
               }
             },
-            borderRadius: "15px"
+            borderRadius: "0px"
           }}
         >
           <ListItemIcon sx={{ minWidth: '40px' }}>
             <MyWallet
-              sx={{ fill: selectedIndex === 0 ? "#00D030" : (theme: any) => theme.palette.secondary.light }}
+              sx={{ fill: selectedIndex === 0 ? "#3ec745" : (theme: any) => theme.palette.secondary.light }}
             />
           </ListItemIcon>
           <ListItemText
@@ -168,20 +107,20 @@ export default function NavBar() {
             maxHeight: "60px",
             "&.Mui-selected": {
               background: (theme) => theme.palette.common.white,
-              borderRadius: "15px",
+              borderRadius: "0px",
               "&:hover": {
                 background: (theme) => theme.palette.common.white
               }
             },
-            borderRadius: "15px",
+            borderRadius: "0px",
           }}
         >
           <ListItemIcon sx={{ minWidth: '40px' }}>
             {/* <DraftsIcon
-              sx={{ fill: selectedIndex === 1 ? "#00D030" : "#D1D1D3" }}
+              sx={{ fill: selectedIndex === 1 ? "#3ec745" : "#EBEBEB" }}
             /> */}
             <Privacy
-              sx={{ fill: selectedIndex === 1 ? "#00D030" : (theme: any) => theme.palette.secondary.light }}
+              sx={{ fill: selectedIndex === 1 ? "#3ec745" : (theme: any) => theme.palette.secondary.light }}
             />
           </ListItemIcon>
           <ListItemText
@@ -205,19 +144,19 @@ export default function NavBar() {
             maxHeight: "60px",
             "&.Mui-selected": {
               background: (theme) => theme.palette.common.white,
-              borderRadius: "15px",
+              borderRadius: "0px",
               "&:hover": {
                 background: (theme) => theme.palette.common.white
               }
             },
-            borderRadius: "15px"
+            borderRadius: "0px"
 
           }}
           onClick={(event) => handleListItemClick(event, 2)}
         >
           <ListItemIcon sx={{ minWidth: '40px' }}>
             <Term
-              sx={{ fill: selectedIndex === 2 ? "#00D030" : (theme: any) => theme.palette.secondary.light }}
+              sx={{ fill: selectedIndex === 2 ? "#3ec745" : (theme: any) => theme.palette.secondary.light }}
             />
           </ListItemIcon>
           <ListItemText
@@ -242,18 +181,18 @@ export default function NavBar() {
             maxHeight: "60px",
             "&.Mui-selected": {
               background: (theme) => theme.palette.common.white,
-              borderRadius: "15px",
+              borderRadius: "0px",
               "&:hover": {
                 background: (theme) => theme.palette.common.white
               }
             },
-            borderRadius: "15px"
+            borderRadius: "0px"
           }}
           onClick={(event) => handleListItemClick(event, 3)}
         >
           <ListItemIcon sx={{ minWidth: '40px' }}>
             <Support
-              sx={{ fill: selectedIndex === 3 ? "#00D030" : (theme: any) => theme.palette.secondary.light }}
+              sx={{ fill: selectedIndex === 3 ? "#3ec745" : (theme: any) => theme.palette.secondary.light }}
             />
           </ListItemIcon>
           <ListItemText
@@ -278,18 +217,18 @@ export default function NavBar() {
             maxHeight: "60px",
             "&.Mui-selected": {
               background: (theme) => theme.palette.common.white,
-              borderRadius: "15px",
+              borderRadius: "0px",
               "&:hover": {
                 background: (theme) => theme.palette.common.white
               }
             },
-           borderRadius: "15px",
+           borderRadius: "0px",
           }}
           onClick={(event) => handleListItemClick(event, 4)}
         >
           <ListItemIcon sx={{ minWidth: '40px' }}>
             <Website
-              sx={{ fill: selectedIndex === 4 ? "#00D030" : (theme: any) => theme.palette.secondary.light }}
+              sx={{ fill: selectedIndex === 4 ? "#3ec745" : (theme: any) => theme.palette.secondary.light }}
             />
           </ListItemIcon>
           <ListItemText
@@ -305,21 +244,6 @@ export default function NavBar() {
             <KeyboardArrowRightRoundedIcon sx={{ fill: getTextColor(theme, 4) }} />
           )}
         </ListItemButton> */}
-        <ListItem sx={{ p: 2 }}>
-          <ListItemIcon sx={{ minWidth: '30px' }}>
-            <MoonDark styles={{ width: '18px', height: '18px', fill: (theme: any) => theme.palette.mode === 'dark' ? "#d1d1d3" : '#8787A8' }} />
-          </ListItemIcon>
-          <ListItemText id="switch-list-label-bluetooth" primary="Dark Mode"
-            sx={{
-              color: (theme) => theme.palette.common.black
-            }} />
-          <AntSwitch
-            onChange={handleToggle("dark")}
-            onClick={muiUtils.toggleColorMode}
-            checked={checked.indexOf("dark") !== -1}
-            inputProps={{ "aria-label": "ant design" }}
-          />
-        </ListItem>
       </List>
     </Box>
   );

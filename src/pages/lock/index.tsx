@@ -73,6 +73,7 @@ export default function LockScreen() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        overflowY: "auto",
         padding: "24px",
         paddingBottom: "calc(24px + env(safe-area-inset-bottom))",
       }}
@@ -84,12 +85,12 @@ export default function LockScreen() {
           <LogoWhite sx={{ width: "3.5em", height: "3.5em" }} />
         )}
       </Box>
-      <Typography sx={{ fontWeight: 700, fontSize: "1.4rem", mb: 1 }}>
+      <Typography sx={{ fontWeight: 700, fontSize: "1.2rem", mb: 1 }}>
         Wallet Locked
       </Typography>
       <Typography
         sx={{
-          color: error ? "#FC2727" : theme.palette.text.secondary,
+          color: error ? "#ff5c5c" : theme.palette.text.secondary,
           mb: 5,
           fontSize: "0.95rem",
         }}

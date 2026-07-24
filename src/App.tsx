@@ -11,7 +11,8 @@ import { useAppDispatch } from "./stores/hooks";
 import patchBeldexNetServiceUtils from "./utils/patchBeldexNetServiceUtils";
 import {
   setUserLogout,
-  setSeedDetails
+  setSeedDetails,
+  setConnectionError
 } from "./stores/features/seedDetailSlice";
 import { fetchSavedAddresses } from "./stores/features/addressBookSlice";
 import { fetchWallets } from "./stores/features/walletsSlice";
@@ -162,11 +163,25 @@ function App() {
 
 
   useEffect(() => {
-    const isOnLine = navigator.onLine
-    if (!isOnLine) {
+    // Handle connectivity changes that happen *after* the app is open (airplane
+    // mode toggled, Wi-Fi/data dropped): reflect it immediately in the header
+    // and via a toast, and clear it when the network returns. Requests also
+    // fast-fail while offline (see patchBeldexNetServiceUtils).
+    const goOffline = () => {
+      dispatch(setConnectionError(true));
       handleShowToastMsg();
-    }
-  })
+    };
+    const goOnline = () => {
+      dispatch(setConnectionError(false));
+    };
+    if (!navigator.onLine) goOffline();
+    window.addEventListener("offline", goOffline);
+    window.addEventListener("online", goOnline);
+    return () => {
+      window.removeEventListener("offline", goOffline);
+      window.removeEventListener("online", goOnline);
+    };
+  }, []);
 
   const theme = useTheme();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
@@ -193,15 +208,36 @@ function App() {
   return (
     <CoreBridgeInstanceContext.Provider value={beldex_utils}>
       <MUIWrapper>
-        <Box sx={{ height: isMobileMode ? "unset" : "100vh", padding: "20px" }}>
+        <Box
+          sx={{
+            // Mobile: a fixed app frame (header/nav pinned, content scrolls
+            // inside) instead of one long scrolling document.
+            height: isMobileMode ? "100dvh" : "100vh",
+            // Mobile: keep content clear of the gesture bar; there is no
+            // bottom tab bar (extension-style dashboard navigation).
+            padding: isMobileMode
+              ? "8px 14px calc(12px + env(safe-area-inset-bottom))"
+              : "20px",
+            boxSizing: "border-box",
+            ...(isMobileMode && {
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }),
+          }}
+        >
           <Header />
           <Box
             sx={{
-              paddingTop: "65px",
+              // Must clear the fixed header (~64px) — 58px let the page's Back
+              // button tuck under it. Content still reads higher than before via
+              // the trimmed shell padding + tighter in-page spacing.
+              paddingTop: isMobileMode ? "66px" : "65px",
               display: "flex",
               gap: "20px",
-              height: "100%"
-              // minHeight: "calc(100vh - 45px)",
+              ...(isMobileMode
+                ? { flex: 1, minHeight: 0, overflowY: "auto" }
+                : { height: "100%" }),
             }}
           >
             <NavBar />

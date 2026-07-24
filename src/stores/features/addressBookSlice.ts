@@ -25,7 +25,7 @@ export const fetchSavedAddresses = createAsyncThunk(
 
 export const addSavedAddress = createAsyncThunk(
   "addressBook/add",
-  async (entry: { label: string; address: string; paymentId?: string }, { getState }) => {
+  async (entry: { label: string; address: string; paymentId?: string; bnsName?: string }, { getState }) => {
     const state = getState() as RootState;
     const newEntry: SavedAddress = {
       ...entry,

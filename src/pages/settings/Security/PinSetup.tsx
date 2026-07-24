@@ -52,10 +52,13 @@ export default function PinSetup({ onDone, onCancel }: PinSetupProps) {
         left: "50%",
         transform: "translate(-50%, -50%)",
         width: { xs: 340, sm: 420 },
+        maxWidth: "92vw",
+        maxHeight: "90vh",
+        overflowY: "auto",
         bgcolor: theme.palette.background.paper,
         boxShadow: 24,
         p: 4,
-        borderRadius: "22px",
+        borderRadius: "0px",
       }}
     >
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -68,7 +71,7 @@ export default function PinSetup({ onDone, onCancel }: PinSetupProps) {
       </Box>
       <Typography
         textAlign="center"
-        sx={{ color: error ? "#FC2727" : theme.palette.text.secondary, mb: 4 }}
+        sx={{ color: error ? "#ff5c5c" : theme.palette.text.secondary, mb: 4 }}
       >
         {error
           ? "PINs did not match, start again"

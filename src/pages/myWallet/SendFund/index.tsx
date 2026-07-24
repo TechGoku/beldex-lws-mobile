@@ -1,11 +1,10 @@
 import React, { useRef, useState, useEffect } from "react";
+import { rf } from "../../../utils/responsiveFont";
 import {
   Box,
   Typography,
   Input,
   Button,
-  Select,
-  MenuItem,
   IconButton,
   useMediaQuery,
 } from "@mui/material";
@@ -16,7 +15,6 @@ import CallMadeIcon from "@mui/icons-material/CallMade";
 import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
 import BookmarkAddOutlinedIcon from "@mui/icons-material/BookmarkAddOutlined";
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg"
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
 import { useTheme } from "@emotion/react";
 import { useSelector } from "react-redux";
@@ -29,6 +27,8 @@ import AddressBook from "../AddressBook";
 import { addSavedAddress } from "../../../stores/features/addressBookSlice";
 import { SavedAddress } from "../../../services/addressBookStorage";
 import { getNetType } from "../../../services/runtimeConfig";
+import { looksLikeBnsName, resolveBnsWallet } from "../../../services/bns";
+import TxAuthGate from "../../../components/txAuthGate/TxAuthGate";
 const JSBigInt = require("@bdxi/beldex-bigint").BigInteger;
 const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
 const beldex_config = require("@bdxi/beldex-config");
@@ -52,6 +52,12 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   // const [currency, setCurrency] = useState("AUD");
   const [priority, setPriority] = useState(5);
   const [toAddress, setToAddress] = useState("");
+  // Live BNS resolution of the recipient field (ported from the extension):
+  // typing a name like "myname.bdx" resolves it via the explorer and the send
+  // goes to the resolved wallet address.
+  const [bnsResolved, setBnsResolved] = useState<{ name: string; address: string } | null>(null);
+  const [bnsResolving, setBnsResolving] = useState(false);
+  const [bnsError, setBnsError] = useState("");
   const [amount, setAmount] = useState("");
   const [isSweepTx, setIsSweepTx] = useState(false);
   const [paymentIdToggle, setPaymentIdToggle] = useState(false);
@@ -96,17 +102,32 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   const [saveLabel, setSaveLabel] = useState("");
   const [saveLabelError, setSaveLabelError] = useState("");
 
+  // PIN/biometric confirmation before signing: the WASM send pipeline pauses
+  // in authenticate_fn until the gate reports back through this callback.
+  const security = useSelector((state: any) => state.securityReducer);
+  const [authOpen, setAuthOpen] = useState(false);
+  const authCbRef = useRef<((ok: boolean) => void) | null>(null);
+  const handleAuthResult = (ok: boolean) => {
+    setAuthOpen(false);
+    const cb = authCbRef.current;
+    authCbRef.current = null;
+    cb?.(ok);
+  };
+
   const style = {
     position: "absolute" as "absolute",
     top: "50%",
     left: "50%",
     transform: "translate(-50%, -50%)",
     width: isMobileMode ? 352 : 552,
+    maxWidth: "92vw",
+    maxHeight: "80vh",
+    overflow: "auto",
     bgcolor: "background.paper",
     // border: "2px solid #000",
     boxShadow: 24,
     p: 4,
-    borderRadius: "22px",
+    borderRadius: "0px",
   };
 
   const processStepMessageSuffix_byEnumVal: any = {
@@ -200,11 +221,42 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     }
   }
 
+  // The address the transaction actually goes to: a resolved BNS wallet when
+  // the user typed a name, otherwise the raw input (primary or integrated).
+  const effectiveToAddress = () =>
+    looksLikeBnsName(toAddress) && bnsResolved ? bnsResolved.address : toAddress.trim();
+
+  // Debounced live resolution while the user types a BNS name.
+  useEffect(() => {
+    setBnsResolved(null);
+    setBnsError("");
+    const input = toAddress.trim();
+    if (!input || !looksLikeBnsName(input)) return;
+    const t = setTimeout(async () => {
+      setBnsResolving(true);
+      try {
+        const addr = await resolveBnsWallet(input);
+        if (addr) {
+          // sanity: the registry must return a valid Beldex address
+          coreBridgeInstance.beldex_utils.decode_address(addr, getNetType());
+          setBnsResolved({ name: input.toLowerCase(), address: addr });
+        } else {
+          setBnsError(`No wallet record for "${input}"`);
+        }
+      } catch (e: any) {
+        setBnsError(`BNS lookup failed: ${e?.message ?? e}`);
+      } finally {
+        setBnsResolving(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [toAddress]);
+
   const addressInputChange = (e: any) => {
     const value = e.target.value;
-    // Allow only alphanumeric characters
-    const alphanumericRegex = /^[a-zA-Z0-9]*$/;
-    if (alphanumericRegex.test(value)) {
+    // Addresses are alphanumeric; BNS names may also carry . - _
+    const recipientRegex = /^[a-zA-Z0-9._-]*$/;
+    if (recipientRegex.test(value)) {
       setToAddress(value);
     }
   };
@@ -235,11 +287,14 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   };
 
   const openSaveAddressPrompt = () => {
-    if (!toAddress || toAddress.length < 95 || toAddress.length > 106) {
+    // A resolved BNS name saves its wallet address; raw input must look like
+    // a primary (~95 char) or integrated (~106 char) address.
+    const addr = effectiveToAddress();
+    if (!addr || addr.length < 95 || addr.length > 106) {
       handleShowToastMsg("Enter a valid address before saving it", false);
       return;
     }
-    setSaveLabel("");
+    setSaveLabel(looksLikeBnsName(toAddress) && bnsResolved ? bnsResolved.name : "");
     setSaveLabelError("");
     setSaveAddressOpen(true);
   };
@@ -252,8 +307,9 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     await dispatch(
       addSavedAddress({
         label: saveLabel.trim(),
-        address: toAddress,
+        address: effectiveToAddress(),
         paymentId: manualPaymentId || undefined,
+        bnsName: looksLikeBnsName(toAddress) && bnsResolved ? bnsResolved.name : undefined,
       })
     );
     setSaveAddressOpen(false);
@@ -312,14 +368,26 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       console.log("couldn't validate destination beldex address");
       return;
     }
-    if (toAddress.length > 106 || toAddress.length < 95) {
+    if (looksLikeBnsName(toAddress)) {
+      // BNS name: must have resolved to a wallet address before sending.
+      if (bnsResolving) {
+        handleShowToastMsg("Still resolving the BNS name — one moment…", false);
+        return;
+      }
+      if (!bnsResolved) {
+        setErrAddress(bnsError || "Could not resolve BNS name");
+        handleShowToastMsg(bnsError || "Could not resolve BNS name", false);
+        return;
+      }
+    } else if (toAddress.length > 106 || toAddress.length < 95) {
+      // Raw address: primary (~95) or integrated/unique with payment ID (~106).
       // return ToastUtils.pushToastError('invalidAddress', 'Invalid address');
       setErrAddress("Invalid address");
 
       console.log("Invalid address");
       return;
     }
-    addressValidation(toAddress);
+    addressValidation(effectiveToAddress());
     if (Number(amount) == 0) {
       // return ToastUtils.pushToastError('zeroAmount', 'Amount must be greater than zero');
       console.log('Amount must be greater than zero');
@@ -403,7 +471,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       requireAuthentication: true,
       destinations: [
         {
-          to_address: toAddress,
+          to_address: effectiveToAddress(),
           send_amount: amount,
         },
       ],
@@ -427,22 +495,15 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       setTxnStatus('Fetching decoy outputs..')
     };
     args.authenticate_fn = (cb: any) => {
-      function Initiate_VerifyUserAuthenticationForAction(
-        customNavigationBarTitle_orNull: any, // String? -- null if you don't want one
-        canceled_fn: any, // () -> Void
-        entryAttempt_succeeded_fn: any // () -> Void
-      ) {
-        entryAttempt_succeeded_fn(); // rather than not implementing this in Lite mode, just going to return immediately - it's more convenient for app objects to be coded as if it exists
+      // Gate the spend behind the app-lock credentials (PIN / biometrics).
+      // Without any enrolled credential there is nothing to verify against,
+      // so the flow proceeds (Settings → App Lock to set a PIN).
+      if (!security?.hasPin && !security?.biometryAvailable) {
+        cb(true);
+        return;
       }
-      Initiate_VerifyUserAuthenticationForAction(
-        "Authenticate",
-        function () {
-          cb(false);
-        },
-        function () {
-          cb(true);
-        }
-      );
+      authCbRef.current = cb;
+      setAuthOpen(true);
     };
     args.status_update_fn = (params: any) => {
       const raw_amount_string = amount;
@@ -455,6 +516,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     };
     args.canceled_fn = () => {
       console.log("canceled_fn ");
+      handleClose();
       clearStates();
     };
     args.success_fn = (params: any) => {
@@ -525,6 +587,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   const clearStates = () => {
     setPriority(5);
     setToAddress("");
+    setBnsResolved(null);
+    setBnsError("");
     setAmount("");
     setIsSweepTx(false);
     setManualPaymentId("");
@@ -558,8 +622,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               fontWeight: 600,
               width: "150px",
               height: "45px",
-              borderRadius: "10px",
-              color: "white",
+              borderRadius: "0px",
             }}
             onClick={() => { setTxnStatus(""), handleClose() }}
           >
@@ -591,41 +654,48 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     <Box
       className="sendFund"
       sx={{
-        padding: `0 ${isMobileMode ? '15px' : '20px'}`,
-        height: "100%",
-        marginTop: isMobileMode ? "10px" : 'unset',
-        borderRadius: '20px',
-        overflow: 'auto',
+        padding: `0 ${isMobileMode ? '12px' : '20px'}`,
+        // On mobile the parent (myWallet Send view) is the single scroll
+        // container — this panel must flow naturally, otherwise the two nested
+        // `overflow:auto` boxes produce a dual scrollbar. Desktop keeps its own
+        // scroll since it sits in a fixed-height side column.
+        height: isMobileMode ? "auto" : "100%",
+        marginTop: 0,
+        borderRadius: '0px',
+        overflow: isMobileMode ? "visible" : "auto",
         background: (theme) => theme.palette.success.main,
-        ".MuiSelect-iconFilled": { fill: "white", color: "white" },
       }}
     >
       <Box
         sx={{
           display: "flex",
           backgroundColor: "transparent",
-          borderRadius: "12px",
-          border: (theme) => `2px solid ${theme.palette.mode === "dark" ? "#32324A" : "#D1D1D1"}`,
-          padding: "7px",
-          marginTop: isMobileMode ? "10px" : "20px",
-          height: "60px", // Increased height to accommodate larger padding
-          alignItems: "center",
+          borderRadius: "0px",
+          border: (theme) => `2px solid ${theme.palette.mode === "dark" ? "#222222" : "#D1D1D1"}`,
+          padding: "4px",
+          gap: "4px",
+          marginTop: isMobileMode ? "6px" : "16px",
+          height: { xs: 44, sm: 50 },
+          alignItems: "stretch",
         }}
       >
         <Button
           fullWidth
           sx={{
             height: "100%",
-            borderRadius: "10px",
-            backgroundColor: !registrationToggle ? (theme.palette.mode === "dark" ? "#32324A" : "#FFFFFF") : "transparent",
-            color: !registrationToggle ? theme.palette.text.primary : "#8787A8",
+            minWidth: 0,
+            borderRadius: "0px",
+            backgroundColor: !registrationToggle ? (theme.palette.mode === "dark" ? "#222222" : "#FFFFFF") : "transparent",
+            color: !registrationToggle ? theme.palette.text.primary : "#8a8a8a",
             textTransform: "none",
             fontWeight: 600,
+            fontSize: rf(12),
+            lineHeight: 1.1,
             transition: "all 0.3s ease",
             "&:hover": {
-              backgroundColor: !registrationToggle ? (theme.palette.mode === "dark" ? "#383854" : "#F9F9F9") : "transparent",
+              backgroundColor: !registrationToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
             },
-            padding: '8px',
+            padding: '4px',
             whiteSpace: 'nowrap',
           }}
           onClick={() => {
@@ -639,16 +709,19 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           fullWidth
           sx={{
             height: "100%",
-            borderRadius: "10px",
-            backgroundColor: registrationToggle ? (theme.palette.mode === "dark" ? "#32324A" : "#FFFFFF") : "transparent",
-            color: registrationToggle ? theme.palette.text.primary : "#8787A8",
+            minWidth: 0,
+            borderRadius: "0px",
+            backgroundColor: registrationToggle ? (theme.palette.mode === "dark" ? "#222222" : "#FFFFFF") : "transparent",
+            color: registrationToggle ? theme.palette.text.primary : "#8a8a8a",
             textTransform: "none",
             fontWeight: 600,
+            fontSize: rf(12),
+            lineHeight: 1.1,
             transition: "all 0.3s ease",
             "&:hover": {
-              backgroundColor: registrationToggle ? (theme.palette.mode === "dark" ? "#383854" : "#F9F9F9") : "transparent",
+              backgroundColor: registrationToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
             },
-            padding: '8px',
+            padding: '4px',
             whiteSpace: 'nowrap',
           }}
           onClick={() => {
@@ -669,8 +742,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         <Typography
           mr={1}
           sx={{
-            color: "#8787A8",
-            fontSize: 14,
+            color: "#8a8a8a",
+            fontSize: rf(14),
             fontWeight: 600,
 
             // fontFamily: "poppins-semibold",
@@ -678,7 +751,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         >
           Available Balance
         </Typography>
-        {/* <InfoOutlinedIcon sx={{ color: "#8787A8", fontSize: 18 }} /> */}
+        {/* <InfoOutlinedIcon sx={{ color: "#8a8a8a", fontSize: rf(18) }} /> */}
       </Box>
       <Typography
         mr={1}
@@ -686,9 +759,9 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         sx={{ fontSize: '1.2rem', fontWeight: 600 }}
       >
         {walletDetails.unlocked_balance}{" "}
-        <span style={{ color: "#20D030" }}>BDX</span>
+        <span style={{ color: "#3ec745" }}>BDX</span>
       </Typography>
-      <Box mt={3} mb={3} sx={{ height: "0.2px", backgroundColor: "#8787A8" }} />
+      <Box mt={1.5} mb={1.5} sx={{ height: "0.2px", backgroundColor: "#8a8a8a" }} />
       {!registrationToggle ? (
         <>
           <Box
@@ -709,7 +782,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             </Typography>
             <Typography
               mt={2}
-              sx={{ color: "#FC2727", fontWeight: 400, fontSize: "0.9rem" }}
+              sx={{ color: "#ff5c5c", fontWeight: 400, fontSize: "0.9rem" }}
             >
               {errAmount}
             </Typography>
@@ -722,12 +795,12 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           >
             <Box
               sx={{
-                backgroundColor: (theme) => theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+                backgroundColor: (theme) => theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
                 padding: "0 20px",
                 width: "100%",
                 color: "white",
-                borderRadius: "12px",
-                border: errAmount ? "1px solid #FC2727" : "none",
+                borderRadius: "0px",
+                border: errAmount ? "1px solid #ff5c5c" : "none",
               }}
               display="flex"
               flexDirection="row"
@@ -754,7 +827,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
                 marginLeft: "10px",
                 width: "100px",
                 height: "35px",
-                borderRadius: "10px",
+                borderRadius: "0px",
                 fontWeight: 600,
                 color: "white",
               }}
@@ -766,13 +839,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             <Typography
               mr={1}
               sx={{
-                color: "#8787A8",
-                fontSize: 14,
+                color: "#8a8a8a",
+                fontSize: rf(14),
               }}
             >
               {estimtionFees}
             </Typography>
-            {/* <InfoOutlinedIcon sx={{ color: "#8787A8", fontSize: 18 }} /> */}
+            {/* <InfoOutlinedIcon sx={{ color: "#8a8a8a", fontSize: rf(18) }} /> */}
           </Box>
         </>
       ) : (
@@ -780,8 +853,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           <Typography
             mr={1}
             sx={{
-              color: "#8787A8",
-              fontSize: 14,
+              color: "#8a8a8a",
+              fontSize: rf(14),
             }}
           >
             Registration uses the current transaction priority and estimated fee.
@@ -810,12 +883,12 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             >
               To
               {/* <InfoOutlinedIcon
-                sx={{ color: "#8787A8", fontSize: 14, marginLeft: "6px" }}
+                sx={{ color: "#8a8a8a", fontSize: rf(14), marginLeft: "6px" }}
               /> */}
             </Typography>
             <Box display="flex" flexDirection="row" alignItems="center">
               <Typography
-                sx={{ color: "#FC2727", fontWeight: 400, fontSize: "0.9rem" }}
+                sx={{ color: "#ff5c5c", fontWeight: 400, fontSize: "0.9rem" }}
               >
                 {errAddress}
               </Typography>
@@ -837,7 +910,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           </Box>
 
           <Input
-            placeholder="Beldex Address"
+            placeholder="Beldex Address or BNS name"
             disableUnderline={true}
             multiline
             sx={{
@@ -845,16 +918,32 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               minHeight: '110px',
               maxHeight: "125px",
               color: theme.palette.text.primary,
-              backgroundColor: (theme) => theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+              backgroundColor: (theme) => theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
               padding: "10px 20px",
-              borderRadius: "12px",
-              border: errAddress ? "1px solid #FC2727" : "none",
+              borderRadius: "0px",
+              border: errAddress ? "1px solid #ff5c5c" : "none",
               overflow: "auto",
               marginTop: "10px",
             }}
             value={toAddress}
             onChange={(event: any) => addressInputChange(event)}
           />
+          {/* Live BNS resolution feedback, extension-style */}
+          {bnsResolving && (
+            <Typography mt={1} sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+              Resolving name…
+            </Typography>
+          )}
+          {bnsResolved && !bnsResolving && (
+            <Typography mt={1} sx={{ color: theme.palette.primary.main, fontSize: rf(12), wordBreak: "break-all" }}>
+              ✓ {bnsResolved.name} → {bnsResolved.address.slice(0, 10)}…{bnsResolved.address.slice(-10)}
+            </Typography>
+          )}
+          {bnsError && !bnsResolving && (
+            <Typography mt={1} sx={{ color: "#f5a623", fontSize: rf(13) }}>
+              {bnsError}
+            </Typography>
+          )}
           {paymentIdToggle ? (
             <>
               <Typography
@@ -868,7 +957,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
                 Enter Payment ID or
                 <span
                   style={{
-                    color: "#289AFB",
+                    color: "#1574ad",
                     textDecoration: "underline",
                     marginLeft: "5px",
                   }}
@@ -887,9 +976,9 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
                   width: "100%",
                   height: "55px",
                   color: theme.palette.text.primary,
-                  backgroundColor: (theme) => theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+                  backgroundColor: (theme) => theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
                   padding: "0 20px",
-                  borderRadius: "12px",
+                  borderRadius: "0px",
                   overflow: "auto",
                 }}
                 onChange={(event: any) => paymentInputChange(event)}
@@ -900,7 +989,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               mt={2}
               mb={1}
               sx={{
-                color: "#289AFB",
+                color: "#1574ad",
                 fontWeight: 400,
                 fontSize: "1rem",
                 textDecorationLine: "underline",
@@ -931,7 +1020,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               Registration String
             </Typography>
             <Typography
-              sx={{ color: "#FC2727", fontWeight: 400, fontSize: "0.9rem" }}
+              sx={{ color: "#ff5c5c", fontWeight: 400, fontSize: "0.9rem" }}
             >
               {errRegistration}
             </Typography>
@@ -946,10 +1035,10 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               width: "100%",
               minHeight: "120px",
               color: theme.palette.text.primary,
-              backgroundColor: (theme) => theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+              backgroundColor: (theme) => theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
               padding: "10px 20px",
-              borderRadius: "12px",
-              border: errRegistration ? "1px solid #FC2727" : "none",
+              borderRadius: "0px",
+              border: errRegistration ? "1px solid #ff5c5c" : "none",
               overflow: "auto",
               marginTop: "10px",
             }}
@@ -959,8 +1048,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           <Typography
             mt={1}
             sx={{
-              color: "#8787A8",
-              fontSize: 14,
+              color: "#8a8a8a",
+              fontSize: rf(14),
             }}
           >
             Paste the full master node registration string here. The send flow
@@ -968,66 +1057,45 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           </Typography>
         </>
       )}
-      <Box display="flex" flexDirection="row" alignItems="center" mt={2}>
-        <Typography
-          component={"span"}
-          mr={"4px"}
-          sx={{
-            color: theme.palette.text.primary,
-            fontWeight: 600,
-          }}
+      {/* Extension-style priority: a single ⚡ Flash checkbox (5 = flash,
+          1 = normal per wallet2.h tx_priority). Masternode registration is
+          always normal priority, so no control is shown on that tab. */}
+      {!registrationToggle && (
+        <Box
+          component="label"
+          display="flex"
+          flexDirection="row"
+          alignItems="center"
+          mt={2}
+          sx={{ cursor: "pointer", userSelect: "none", gap: "8px" }}
         >
-          Priority
-        </Typography>
-        {/* <InfoOutlinedIcon sx={{ color: "#8787A8", fontSize: 14 }} /> */}
-        <Select
-          sx={{
-            color: theme.palette.text.primary,
-            backgroundColor: (theme: any) => theme.palette.secondary.main,
-            height: "35px",
-            borderRadius: "10px",
-            marginLeft: "25px",
-
-            "& .MuiSelect-icon": {
-              fill: theme.palette.text.primary,
-              color: theme.palette.text.primary,
-            },
-          }}
-          SelectDisplayProps={{
-            style: {
-              paddingTop: "10px",
-              paddingBottom: "10px",
-              backgroundColor: theme.palette.secondary.main,
-              borderRadius: "10px",
-              width: "77px",
-            },
-          }}
-          variant="filled"
-          disableUnderline
-          IconComponent={KeyboardArrowDownIcon}
-          inputProps={{
-            MenuProps: {
-              MenuListProps: {
-                sx: {
-                  color: theme.palette.text.primary,
-                  backgroundColor: (theme: any) => theme.palette.secondary.main,
-                },
-              },
-            },
-          }}
-          value={priority}
-          defaultValue={priority}
-          onChange={(event: any) => { setPriority(event.target.value), newEstimatedNetworkFeeDisplay() }}
-        >
-          <MenuItem value={5}>Flash</MenuItem>
-          <MenuItem value={1}>Normal</MenuItem>
-        </Select>
-      </Box>
+          <Box
+            component="input"
+            type="checkbox"
+            checked={priority === 5}
+            onChange={(e: any) => {
+              setPriority(e.target.checked ? 5 : 1);
+              newEstimatedNetworkFeeDisplay();
+            }}
+            sx={{
+              width: 16,
+              height: 16,
+              margin: 0,
+              accentColor: theme.palette.primary.main,
+            }}
+          />
+          <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(14) }}>
+            ⚡ Flash — instant confirmation
+          </Typography>
+        </Box>
+      )}
       <Box
         display="flex"
         flexDirection="row"
+        flexWrap="wrap"
         justifyContent="center"
         alignItems="center"
+        gap="20px"
         mt={'35px'}
       >
         <Button
@@ -1035,10 +1103,9 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           color="secondary"
           sx={{
             fontWeight: 600,
-            marginRight: "20px",
-            width: "150px",
+            width: "min(150px, 42vw)",
             height: "45px",
-            borderRadius: isMobileMode ? '40px' : "10px",
+            borderRadius: "0px",
             // color: "white",
             color: theme.palette.text.primary,
           }}
@@ -1051,11 +1118,10 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           color="primary"
           sx={{
             fontWeight: 600,
-            width: "150px",
+            width: "min(150px, 42vw)",
             height: "45px",
-            // borderRadius: "10px",
-            borderRadius: isMobileMode ? '40px' : "10px",
-            color: "white",
+            // borderRadius: "0px",
+            borderRadius: "0px",
 
             // color: theme.palette.text.primary,
           }}
@@ -1075,98 +1141,157 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       >
         {txnStatus !== "success" ?
           <Box sx={style}>
+            {/* Extension review modal: recipient in a green dashed box, detail
+                rows, and the irreversibility warning before confirming. */}
             <Typography
               id="modal-modal-title"
-              variant="h5"
-              component="h2"
-              textAlign="center"
-              sx={{ fontWeight: "700" }}
+              sx={{
+                fontFamily: "'Michroma', 'Poppins', sans-serif",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                fontSize: rf(17),
+              }}
             >
-              Confirm Sending
+              Review Transaction
             </Typography>
             {isRegister ? (
               <>
-                <Typography mt={1} sx={{ fontWeight: "400", fontSize: "1.1rem" }}>
-                  Registration String :
+                <Typography mt={2} sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                  Registration string
                 </Typography>
                 <Typography
                   id="modal-modal-description"
-                  sx={{ wordBreak: "break-all", fontWeight: "300" }}
+                  sx={{
+                    mt: 1,
+                    padding: "12px",
+                    border: `1px dashed ${theme.palette.primary.main}`,
+                    backgroundColor: theme.palette.mode === "dark" ? "#0d0d0d" : "#fbfbfb",
+                    color: theme.palette.primary.main,
+                    fontSize: rf(12),
+                    lineHeight: 1.7,
+                    wordBreak: "break-all",
+                    maxHeight: "180px",
+                    overflowY: "auto",
+                  }}
                 >
                   {registrationString}
                 </Typography>
               </>
             ) : (
               <>
-                <Typography mt={1} sx={{ fontWeight: "400", fontSize: "1.1rem" }}>
-                  Address :
+                {looksLikeBnsName(toAddress) && bnsResolved && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "baseline",
+                      mt: 2,
+                    }}
+                  >
+                    <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                      BNS name
+                    </Typography>
+                    <Typography sx={{ color: theme.palette.primary.main, fontWeight: 700, fontSize: rf(14) }}>
+                      {bnsResolved.name}
+                    </Typography>
+                  </Box>
+                )}
+                <Typography mt={2} sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                  {looksLikeBnsName(toAddress) && bnsResolved ? "Resolves to" : "Recipient"}
                 </Typography>
+                {/* full address, untruncated — this is exactly what receives the funds */}
                 <Typography
                   id="modal-modal-description"
-                  sx={{ wordBreak: "break-all", fontWeight: "300" }}
+                  sx={{
+                    mt: 1,
+                    padding: "12px",
+                    border: `1px dashed ${theme.palette.primary.main}`,
+                    backgroundColor: theme.palette.mode === "dark" ? "#0d0d0d" : "#fbfbfb",
+                    color: theme.palette.primary.main,
+                    fontSize: rf(12),
+                    lineHeight: 1.7,
+                    wordBreak: "break-all",
+                  }}
                 >
-                  {toAddress}
+                  {effectiveToAddress()}
                 </Typography>
-                <Typography
-                  mt={1}
-                  sx={{ color: "#77778B", fontWeight: "400", fontSize: "1.1rem" }}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    mt: 2,
+                    pb: 1,
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                  }}
                 >
-                  Amount :{" "}
-                  <Typography
-                    component={"span"}
-                    sx={{ color: theme.palette.text.primary }}
-                  >
-                    {amount}
+                  <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                    Amount
                   </Typography>
-                </Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: rf(14) }}>
+                    {amount} BDX
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    mt: 1.5,
+                  }}
+                >
+                  <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                    Priority
+                  </Typography>
+                  <Typography sx={{ fontSize: rf(14) }}>
+                    {priority === 5 ? "⚡ Flash (instant)" : "Normal"}
+                  </Typography>
+                </Box>
               </>
             )}
+            <Typography mt={2} sx={{ color: "#f5a623", fontSize: rf(12.5), lineHeight: 1.5 }}>
+              ⚠ Transactions are irreversible. Verify the full recipient address
+              before confirming.
+            </Typography>
             {txnStatus === 'confirmation' ?
               <Box
                 display="flex"
                 flexDirection="row"
                 justifyContent="center"
                 alignItems="center"
-                mt={5}
+                gap="10px"
+                mt={3}
               >
                 <Button
-                  variant="contained"
-                  color="secondary"
+                  variant="outlined"
+                  fullWidth
                   sx={{
                     fontWeight: 600,
-                    marginRight: "10px",
-                    width: "150px",
                     height: "45px",
-                    borderRadius: "10px",
-                    color: theme.palette.text.primary,
                   }}
                   onClick={handleClose}
                 >
-                  cancel
+                  Cancel
                 </Button>
                 <Button
                   variant="contained"
                   color="primary"
+                  fullWidth
                   sx={{
                     fontWeight: 600,
-                    width: "150px",
                     height: "45px",
-                    borderRadius: "10px",
-                    color: '#fff',
-
                   }}
                   onClick={() => intiate_transaction()}
                 >
-
-                  Confirm
+                  Confirm send
                 </Button>
               </Box>
               :
-              <Box mt={2} sx={{ backgroundColor: theme.palette.mode === 'dark' ? "#32324A" : '#fff', padding: '10px 20px', borderRadius: '10px' }}  >
+              <Box mt={2} sx={{ backgroundColor: theme.palette.mode === 'dark' ? "#222222" : '#fff', padding: '10px 20px', borderRadius: '0px' }}  >
                 <Typography
                   sx={{ color: '#77778B', fontWeight: 400, fontSize: isMobileMode ? "0.8rem" : '1rem' }}
                 >
-                  Sending <span style={{ color: '#00AD07', fontWeight: '700', fontSize: '1.1rem' }}>{amount} BDX.. </span>{txnStatus}
+                  Sending <span style={{ color: '#2e9e38', fontWeight: '700', fontSize: '1.1rem' }}>{amount} BDX.. </span>{txnStatus}
                 </Typography>
               </Box>
             }
@@ -1188,12 +1313,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: isMobileMode ? 320 : 480,
+            maxWidth: "92vw",
             maxHeight: "80vh",
             overflow: "auto",
             bgcolor: theme.palette.background.paper,
             boxShadow: 24,
             p: 4,
-            borderRadius: "22px",
+            borderRadius: "0px",
           }}
         >
           <AddressBook onSelect={handlePickSavedAddress} />
@@ -1209,10 +1335,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: isMobileMode ? 320 : 480,
+            maxWidth: "92vw",
+            maxHeight: "90vh",
+            overflow: "auto",
             bgcolor: theme.palette.background.paper,
             boxShadow: 24,
             p: 4,
-            borderRadius: "22px",
+            borderRadius: "0px",
           }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
@@ -1228,9 +1357,9 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               width: "100%",
               height: "50px",
               color: theme.palette.text.primary,
-              backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+              backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
               padding: "0 16px",
-              borderRadius: "12px",
+              borderRadius: "0px",
               marginTop: "8px",
               marginBottom: "8px",
             }}
@@ -1238,18 +1367,18 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             onChange={(e) => setSaveLabel(e.target.value)}
           />
           {saveLabelError && (
-            <Typography sx={{ color: "#FC2727", fontSize: "0.9rem", mb: 1 }}>
+            <Typography sx={{ color: "#ff5c5c", fontSize: "0.9rem", mb: 1 }}>
               {saveLabelError}
             </Typography>
           )}
-          <Typography sx={{ color: "#8787A8", fontSize: "0.8rem", wordBreak: "break-all" }}>
-            {toAddress}
+          <Typography sx={{ color: "#8a8a8a", fontSize: "0.8rem", wordBreak: "break-all" }}>
+            {effectiveToAddress()}
           </Typography>
-          <Box display="flex" flexDirection="row" justifyContent="center" mt={3}>
+          <Box display="flex" flexDirection="row" flexWrap="wrap" justifyContent="center" gap="10px" mt={3}>
             <Button
               variant="contained"
               color="secondary"
-              sx={{ fontWeight: 600, marginRight: "10px", width: "150px", height: "45px", borderRadius: "10px", color: theme.palette.text.primary }}
+              sx={{ fontWeight: 600, width: "min(150px, 42vw)", height: "45px", borderRadius: "0px", color: theme.palette.text.primary }}
               onClick={() => setSaveAddressOpen(false)}
             >
               Cancel
@@ -1257,7 +1386,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             <Button
               variant="contained"
               color="primary"
-              sx={{ fontWeight: 600, width: "150px", height: "45px", borderRadius: "10px", color: "#fff" }}
+              sx={{ fontWeight: 600, width: "min(150px, 42vw)", height: "45px", borderRadius: "0px", }}
               onClick={confirmSaveAddress}
             >
               Save
@@ -1266,6 +1395,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         </Box>
       </Modal>
 
+      <TxAuthGate open={authOpen} onResult={handleAuthResult} />
       <ToastMsg ref={toastMsgRef} />
 
     </Box>

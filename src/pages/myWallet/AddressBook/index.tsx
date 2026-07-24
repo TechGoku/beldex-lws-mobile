@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Box, Typography, IconButton, Input, Modal, useMediaQuery } from "@mui/material";
 import { useTheme } from "@emotion/react";
 import AddIcon from "@mui/icons-material/Add";
+import SearchIcon from "@mui/icons-material/Search";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -9,6 +10,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import BaseButton from "../../../components/button/BaseButton";
 import ToastMsg, { ToastMsgRef } from "../../../components/snackbar/ToastMsg";
 import { useAppDispatch, useAppSelector } from "../../../stores/hooks";
+import { rf } from "../../../utils/responsiveFont";
 import {
   addressBookSelector,
   addSavedAddress,
@@ -18,6 +20,9 @@ import {
 } from "../../../stores/features/addressBookSlice";
 import { SavedAddress } from "../../../services/addressBookStorage";
 import { copyToClipboard } from "../../../services/clipboard";
+import { looksLikeBnsName, resolveBnsWallet } from "../../../services/bns";
+import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
+import { getNetType } from "../../../services/runtimeConfig";
 
 interface AddressBookProps {
   // When provided, the address book acts as a picker: tapping a saved
@@ -32,16 +37,61 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
   const { addresses, loaded } = useAppSelector(addressBookSelector);
   const toastMsgRef = useRef<ToastMsgRef>(null);
 
+  const coreBridgeInstance = React.useContext(CoreBridgeInstanceContext);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Quick filter over label / address / BNS name.
+  const [search, setSearch] = useState("");
+  const query = search.trim().toLowerCase();
+  const visibleAddresses = query
+    ? addresses.filter(
+        (entry) =>
+          entry.label.toLowerCase().includes(query) ||
+          entry.address.toLowerCase().includes(query) ||
+          (entry.bnsName ?? "").toLowerCase().includes(query)
+      )
+    : addresses;
   const [label, setLabel] = useState("");
   const [address, setAddress] = useState("");
   const [paymentId, setPaymentId] = useState("");
   const [error, setError] = useState("");
+  // Live BNS resolution: typing a name in the address field resolves it via
+  // the explorer, and saving stores the resolved wallet address.
+  const [bnsResolved, setBnsResolved] = useState<{ name: string; address: string } | null>(null);
+  const [bnsResolving, setBnsResolving] = useState(false);
+  const [bnsError, setBnsError] = useState("");
 
   useEffect(() => {
     if (!loaded) dispatch(fetchSavedAddresses());
   }, [loaded, dispatch]);
+
+  useEffect(() => {
+    setBnsResolved(null);
+    setBnsError("");
+    const input = address.trim();
+    if (!formOpen || !input || !looksLikeBnsName(input)) return;
+    const t = setTimeout(async () => {
+      setBnsResolving(true);
+      try {
+        const resolved = await resolveBnsWallet(input);
+        if (resolved) {
+          // sanity: the registry must return a valid Beldex address
+          coreBridgeInstance.beldex_utils.decode_address(resolved, getNetType());
+          setBnsResolved({ name: input.toLowerCase(), address: resolved });
+          // A fresh contact named after its BNS name is the sensible default.
+          setLabel((prev) => (prev.trim() ? prev : input.toLowerCase()));
+        } else {
+          setBnsError(`No wallet record for "${input}"`);
+        }
+      } catch (e: any) {
+        setBnsError(`BNS lookup failed: ${e?.message ?? e}`);
+      } finally {
+        setBnsResolving(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [address, formOpen]);
 
   const showToast = (message: string, success: boolean) => {
     toastMsgRef.current?.showAlert(message, success ? "success" : "error");
@@ -53,6 +103,8 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
     setAddress("");
     setPaymentId("");
     setError("");
+    setBnsResolved(null);
+    setBnsError("");
   };
 
   const openAddForm = () => {
@@ -71,16 +123,30 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
 
   const handleSave = async () => {
     const trimmedLabel = label.trim();
-    const trimmedAddress = address.trim();
+    const rawInput = address.trim();
+    const isBns = looksLikeBnsName(rawInput);
 
     if (!trimmedLabel) {
       setError("Please enter a label for this address");
       return;
     }
-    if (trimmedAddress.length < 95 || trimmedAddress.length > 106) {
+    if (isBns) {
+      if (bnsResolving) {
+        setError("Still resolving the BNS name — one moment…");
+        return;
+      }
+      if (!bnsResolved) {
+        setError(bnsError || "Could not resolve BNS name");
+        return;
+      }
+    } else if (rawInput.length < 95 || rawInput.length > 106) {
       setError("Invalid Beldex address");
       return;
     }
+    // A resolved BNS name stores its wallet address, not the name itself.
+    const trimmedAddress = isBns && bnsResolved ? bnsResolved.address : rawInput;
+    const bnsName = isBns && bnsResolved ? bnsResolved.name : undefined;
+
     const duplicate = addresses.find(
       (item) => item.address === trimmedAddress && item.id !== editingId
     );
@@ -97,6 +163,11 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
           label: trimmedLabel,
           address: trimmedAddress,
           paymentId: paymentId.trim() || undefined,
+          // Keep the remembered name when the address wasn't changed; adopt
+          // the new name when the user re-resolved one.
+          bnsName:
+            bnsName ??
+            (existing && existing.address === trimmedAddress ? existing.bnsName : undefined),
           createdAt: existing ? existing.createdAt : Date.now(),
         })
       );
@@ -107,6 +178,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
           label: trimmedLabel,
           address: trimmedAddress,
           paymentId: paymentId.trim() || undefined,
+          bnsName,
         })
       );
       showToast("Address saved", true);
@@ -134,19 +206,22 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
     left: "50%",
     transform: "translate(-50%, -50%)",
     width: isMobileMode ? 320 : 480,
+    maxWidth: "92vw",
+    maxHeight: "90vh",
+    overflowY: "auto" as const,
     bgcolor: theme.palette.background.paper,
     boxShadow: 24,
     p: 4,
-    borderRadius: "22px",
+    borderRadius: "0px",
   };
 
   const inputSx = {
     width: "100%",
     height: "50px",
     color: theme.palette.text.primary,
-    backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+    backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
     padding: "0 16px",
-    borderRadius: "12px",
+    borderRadius: "0px",
     marginTop: "8px",
     marginBottom: "16px",
   };
@@ -160,7 +235,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
         alignItems="center"
       >
         <Typography
-          sx={{ fontWeight: 600, fontSize: "18px", color: theme.palette.text.primary }}
+          sx={{ fontWeight: 600, fontSize: rf(18), color: theme.palette.text.primary }}
         >
           Saved Addresses
         </Typography>
@@ -168,6 +243,31 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
           <AddIcon />
         </IconButton>
       </Box>
+
+      {/* Quick search across labels, addresses and BNS names */}
+      {addresses.length > 0 && (
+        <Box
+          mt={1.5}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            padding: "6px 12px",
+            border: `1px solid ${theme.palette.divider}`,
+            backgroundColor: theme.palette.mode === "dark" ? "#0d0d0d" : "#fbfbfb",
+          }}
+        >
+          <SearchIcon sx={{ fontSize: "1.1rem", color: theme.palette.text.secondary }} />
+          <Input
+            placeholder="Search contacts"
+            disableUnderline
+            fullWidth
+            sx={{ fontSize: rf(14), color: theme.palette.text.primary }}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </Box>
+      )}
 
       <Box mt={2}>
         {addresses.length === 0 ? (
@@ -177,19 +277,26 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
             justifyContent="center"
             flexDirection="column"
             sx={{
-              border: `2px solid ${theme.palette.mode === "dark" ? "#454556" : "#D7D7D7"}`,
-              borderRadius: "8px",
-              backgroundColor: theme.palette.mode === "dark" ? "#2E2E3C" : "#F8F8F8",
+              border: `2px solid ${theme.palette.mode === "dark" ? "#333333" : "#D7D7D7"}`,
+              borderRadius: "0px",
+              backgroundColor: theme.palette.mode === "dark" ? "#161616" : "#F8F8F8",
               padding: "30px 20px",
             }}
           >
             <Typography sx={{ fontWeight: 600 }}>No saved addresses yet</Typography>
-            <Typography mt={1} sx={{ color: "#82828D", fontSize: "12px", textAlign: "center" }}>
+            <Typography mt={1} sx={{ color: "#777777", fontSize: rf(12), textAlign: "center" }}>
               Addresses you save are stored only on this device.
             </Typography>
           </Box>
+        ) : visibleAddresses.length === 0 ? (
+          <Typography
+            mt={2}
+            sx={{ color: theme.palette.text.secondary, fontSize: rf(13), textAlign: "center" }}
+          >
+            No contacts match "{search.trim()}"
+          </Typography>
         ) : (
-          addresses.map((entry) => (
+          visibleAddresses.map((entry) => (
             <Box
               key={entry.id}
               display="flex"
@@ -199,7 +306,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
               mt={2}
               pb={2}
               sx={{
-                borderBottom: "0.5px solid #8787A8",
+                borderBottom: "0.5px solid #8a8a8a",
                 cursor: onSelect ? "pointer" : "default",
               }}
               onClick={() => onSelect && onSelect(entry)}
@@ -207,8 +314,16 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
               <Box sx={{ minWidth: 0 }}>
                 <Typography sx={{ fontWeight: 600, fontSize: "1rem" }}>
                   {entry.label}
+                  {entry.bnsName && (
+                    <Typography
+                      component="span"
+                      sx={{ color: theme.palette.primary.main, fontSize: "0.8rem", ml: 1 }}
+                    >
+                      BNS: {entry.bnsName}
+                    </Typography>
+                  )}
                 </Typography>
-                <Typography sx={{ color: "#8787A8", fontSize: "0.85rem" }}>
+                <Typography sx={{ color: "#8a8a8a", fontSize: "0.85rem" }}>
                   {truncateAddress(entry.address)}
                 </Typography>
               </Box>
@@ -227,7 +342,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
                     openEditForm(entry);
                   }}
                 >
-                  <EditIcon sx={{ fontSize: "1.2rem", color: "#8787A8" }} />
+                  <EditIcon sx={{ fontSize: "1.2rem", color: "#8a8a8a" }} />
                 </IconButton>
                 <IconButton
                   onClick={(e) => {
@@ -235,7 +350,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
                     handleDelete(entry.id);
                   }}
                 >
-                  <DeleteOutlineIcon sx={{ fontSize: "1.2rem", color: "#FC2727" }} />
+                  <DeleteOutlineIcon sx={{ fontSize: "1.2rem", color: "#ff5c5c" }} />
                 </IconButton>
               </Box>
             </Box>
@@ -264,9 +379,9 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
             onChange={(e) => setLabel(e.target.value)}
           />
 
-          <Typography sx={{ fontWeight: 600 }}>Beldex Address</Typography>
+          <Typography sx={{ fontWeight: 600 }}>Beldex Address or BNS name</Typography>
           <Input
-            placeholder="Beldex Address"
+            placeholder="Beldex Address or BNS name"
             disableUnderline
             multiline
             fullWidth
@@ -274,6 +389,29 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
             value={address}
             onChange={(e) => setAddress(e.target.value)}
           />
+          {bnsResolving && (
+            <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.85rem", mt: -1, mb: 2 }}>
+              Resolving name…
+            </Typography>
+          )}
+          {bnsResolved && !bnsResolving && (
+            <Typography
+              sx={{
+                color: theme.palette.primary.main,
+                fontSize: "0.85rem",
+                wordBreak: "break-all",
+                mt: -1,
+                mb: 2,
+              }}
+            >
+              ✓ {bnsResolved.name} → {bnsResolved.address.slice(0, 10)}…{bnsResolved.address.slice(-10)}
+            </Typography>
+          )}
+          {bnsError && !bnsResolving && (
+            <Typography sx={{ color: "#f5a623", fontSize: "0.85rem", mt: -1, mb: 2 }}>
+              {bnsError}
+            </Typography>
+          )}
 
           <Typography sx={{ fontWeight: 600 }}>Payment ID (optional)</Typography>
           <Input
@@ -287,7 +425,7 @@ export default function AddressBook({ onSelect }: AddressBookProps) {
           />
 
           {error && (
-            <Typography sx={{ color: "#FC2727", fontSize: "0.9rem", mb: 2 }}>{error}</Typography>
+            <Typography sx={{ color: "#ff5c5c", fontSize: "0.9rem", mb: 2 }}>{error}</Typography>
           )}
 
           <Box display="flex" flexDirection="row" justifyContent="center" mt={1}>

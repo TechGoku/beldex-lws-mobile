@@ -21,7 +21,7 @@ const Home = () => {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Registration />

@@ -9,12 +9,15 @@ const Terms = () => {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
-      <Box sx={{ height: "calc(100vh - 107px)", overflowY: "auto" }}>
-        <Typography sx={{ color: theme.palette.text.primary, fontSize: '20px', fontWeight: 700, margin: '40px 40px 25px', textAlign: 'center' }}>Terms of Service</Typography>
-        <Box sx={{ color: theme.palette.text.primary, fontSize: '20px', margin: isMobileMode ? "0" : '40px 40px 25px', }}>
+      <Box sx={{ height: "calc(100dvh - 107px)", overflowY: "auto" }}>
+        <Typography sx={{ color: theme.palette.text.primary, fontSize: '1.2rem', fontWeight: 700, margin: '40px 40px 25px', textAlign: 'center' }}>Terms of Service</Typography>
+        <Box sx={{ color: theme.palette.text.primary, fontSize: isMobileMode ? '0.95rem' : '1.05rem', margin: isMobileMode ? "0" : '40px 40px 25px',
+          // Consistent body size: MUI Typography children otherwise fall back to
+          // their own larger default and ignore this container size.
+          '& .MuiTypography-root': { fontSize: 'inherit' } }}>
           <Typography>
             PLEASE READ THESE TERMS OF SERVICE CAREFULLY. BY CLICKING THE "CONTINUE" BUTTON OR BY ACCESSING OR USING OUR SERVICES, YOU AGREE TO BE BOUND BY THESE TERMS OF SERVICE AND ALL TERMS INCORPORATED BY REFERENCE.
           </Typography>
@@ -183,7 +186,7 @@ const Terms = () => {
           <Typography>
             In the event of any Force Majeure Event (as defined in Section 17.5), breach of these Terms, or any other event that would make provision of the Services commercially unreasonable for Company, we may, in our discretion and without liability to you, with or without prior notice, suspend your access to all or a portion of our Services. We may terminate your access to the Services in our sole discretion, immediately and without prior notice, and delete or deactivate your Account and all related information and files in such account without liability to you, including, for instance, in the event that you breach any terms of these Terms. In the event of termination, Company will attempt to return any Funds stored in your Account not otherwise owed to Company, unless Company believes you have committed fraud, negligence or other misconduct. In the event of termination, your access to funds will depend on your access to your account backup.
           </Typography>
-          <Typography sx={{ marginTop: '20px', }}>
+          <Typography component={'div'} sx={{ marginTop: '20px', }}>
             <Typography component={"span"} sx={{ color: theme.palette.text.primary, fontWeight: 700 }}>   13. Disclaimer of Warranties </Typography>
             <Typography sx={{ marginTop: '20px' }} component={'ol'}>
               <Typography component={'li'}>
@@ -198,7 +201,7 @@ const Terms = () => {
 
             </Typography>
           </Typography>
-          <Typography sx={{ marginTop: '20px', }}>
+          <Typography component={'div'} sx={{ marginTop: '20px', }}>
             <Typography component={"span"} sx={{ color: theme.palette.text.primary, fontWeight: 700 }}>  14. Limitation of Liability </Typography>
             <Typography sx={{ marginTop: '20px' }} component={'ol'}>
               <Typography component={'li'}>
@@ -225,7 +228,7 @@ const Terms = () => {
             PLEASE READ THE FOLLOWING PARAGRAPH CAREFULLY BECAUSE IT REQUIRES YOU TO ARBITRATE DISPUTES WITH US AND IT LIMITS THE MANNER IN WHICH YOU CAN SEEK RELIEF.
             You and Company agree to arbitrate any dispute arising from these Terms or your use of the Services, except for disputes in which either party seeks equitable and other relief for the alleged unlawful use of copyrights, trademarks, trade names, logos, trade secrets or patents. ARBITRATION PREVENTS YOU FROM SUING IN COURT OR FROM HAVING A JURY TRIAL. You and Company agree to notify each other in writing of any dispute within thirty (30) days of when it arises. Notice to the Company must be sent to support@beldex.io. You and Company further agree: (a) to attempt informal resolution prior to any demand for arbitration; (b) that any arbitration will occur in Seychelles (c) that arbitration will be conducted confidentially and be finally settled under the Rules of Arbitration of the International Chamber of Commerce by one or more arbitrators appointed in accordance with the said Rule and (d) that the courts in Seychelles have exclusive jurisdiction over any appeals of an arbitration award and over any suit between the parties not subject to arbitration. Other than class procedures and remedies discussed below, the arbitrator has the authority to grant any remedy that would otherwise be available in court. Any dispute between the parties will be governed by these Terms and the laws of Seychelles, without giving effect to any conflict of laws principles that may provide for the application of the law of another jurisdiction. WHETHER THE DISPUTE IS HEARD IN ARBITRATION OR IN COURT, YOU AND COMPANY WILL NOT COMMENCE AGAINST THE OTHER A CLASS ACTION, CLASS ARBITRATION OR REPRESENTATIVE ACTION OR PROCEEDING.
           </Typography>
-          <Typography sx={{ marginTop: '20px', }}>
+          <Typography component={'div'} sx={{ marginTop: '20px', }}>
             <Typography component={"span"} sx={{ color: theme.palette.text.primary, fontWeight: 700 }}>   17. Miscellaneous  </Typography>
             <Typography component={'ul'} sx={{ marginTop: '20px' }}>
               <Typography component={'li'}>

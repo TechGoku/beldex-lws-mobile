@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { rf } from "../../../utils/responsiveFont";
 import "./styles.scss";
-import { Box, Button, SvgIcon, Typography } from "@mui/material";
-import ArrowRightIcon from "@mui/icons-material/ArrowRight";
+import { Box, IconButton, Typography } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import EmptyTransactions from "../../../icons/EmptyTransactionsDark";
 import { useTheme } from "@emotion/react";
 import loadingIcon from "../../../icons/loading.gif";
@@ -11,13 +12,14 @@ export default function TransactionList(props: any) {
   const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
   const theme: any = useTheme();
 
-  const dateString = (dateVal: any) => {
-    const date = new Date(dateVal);
-    return date.toLocaleDateString("en-US" /* for now */, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
+  // Extension-style relative timestamps for the history rows.
+  const timeAgo = (ts: any) => {
+    if (!ts) return "";
+    const s = (Date.now() - new Date(ts).getTime()) / 1000;
+    if (s < 60) return "just now";
+    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+    return `${Math.floor(s / 86400)}d ago`;
   };
 
   const decimalValidation = (transaction: any) => {
@@ -63,9 +65,13 @@ export default function TransactionList(props: any) {
               transform: "translate(-50%, -50%)",
               backgroundColor: "rgba(0, 0, 0, 0.8)",
               // padding: "20px",
-              borderRadius: "5px",
+              borderRadius: "0px",
               boxShadow: "0 0 10px rgba(0, 0, 0, 0.2)",
-              zIndex: (theme: any) => theme.zIndex.modal + 1,
+              zIndex: 1,
+              // Never capture taps: even while the first load is in flight
+              // (up to the request timeout on a blocked server) the header menu
+              // and navigation must stay reachable.
+              pointerEvents: "none",
             }}
           >
             <Box
@@ -82,60 +88,109 @@ export default function TransactionList(props: any) {
           </Box>
         </div>
       ) : transactions.length ? (
-        transactions.map((transaction: any, index: number) => (
-          <Box
-            display="flex"
-            flexDirection="row"
-            justifyContent="space-between"
-            alignItems="center"
-            mt={2}
-            pb={2}
-            key={index}
-            sx={{
-              borderBottom: "0.5px solid #8787A8",
-            }}
-            onClick={() => props.setTransactionDetails([transaction])}
-          >
-            <Box>
-              <Typography
+        transactions.map((transaction: any, index: number) => {
+          // Extension .tx row: bordered in/out arrow, hash + time-ago,
+          // signed colored amount, ⓘ opens the details view.
+          const outgoing =
+            transaction.approx_float_amount < 0 ||
+            transaction.hasOwnProperty("isJustSentTransaction");
+          const pending =
+            transaction.hasOwnProperty("isJustSentTransaction") ||
+            !transaction.isConfirmed;
+          const accent = outgoing ? "#ff5c5c" : "#3ec745";
+          return (
+            <Box
+              display="flex"
+              flexDirection="row"
+              alignItems="center"
+              key={index}
+              sx={{
+                padding: "9px 4px",
+                borderBottom: `1px solid ${
+                  theme.palette.mode === "dark" ? "#191919" : "#ececec"
+                }`,
+                cursor: "pointer",
+                "&:last-child": { borderBottom: "none" },
+              }}
+              onClick={() => props.setTransactionDetails([transaction])}
+            >
+              <Box
                 sx={{
-                  color:
-                    transaction.approx_float_amount < 0 ? "#FC2727" : "#20D030",
-                  fontWeight: 600,
-                  fontSize: "1.1rem",
+                  width: 26,
+                  height: 26,
+                  marginRight: "10px",
+                  flex: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: rf(13),
+                  border: `1px solid ${accent}`,
+                  color: accent,
                 }}
               >
-                {decimalValidation(transaction)} BDX
-                {/* {transaction.total_received/1e9} BDX */}
-              </Typography>
-              <Typography sx={{ color: "#D1D1D3", fontSize: "0.8rem" }}>
-                {paymentIdZeroValidation(transaction.payment_id)}
-              </Typography>
-            </Box>
-            <Box display="flex" flexDirection="row" alignItems="center">
-              <Box mr={2}>
-                <Typography sx={{ fontSize: "0.8rem" }}>
-                  {dateString(transaction.timestamp)}
+                {outgoing ? "↑" : "↓"}
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: rf(10),
+                    color: theme.palette.text.secondary,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                  title={transaction.hash}
+                >
+                  {transaction.hash}
                 </Typography>
                 <Typography
-                  textAlign={"end"}
-                  sx={{ color: "#8787A8", fontSize: "14px" }}
+                  sx={{
+                    fontSize: rf(10),
+                    color: pending ? "#f5a623" : theme.palette.text.secondary,
+                  }}
                 >
-                  {transaction.hasOwnProperty('isJustSentTransaction') ? "Transaction in pool" :
-                    transaction.isConfirmed ? "Confirmed" : "Pending"}
+                  {pending ? "⏳ pending" : timeAgo(transaction.timestamp)}
                 </Typography>
               </Box>
-              <ArrowRightIcon sx={{ fill: "#8787A8", fontSize: "2rem" }} />
+              <Typography
+                sx={{
+                  fontWeight: 700,
+                  fontSize: rf(13),
+                  textAlign: "right",
+                  flex: "none",
+                  color: accent,
+                  marginLeft: "8px",
+                }}
+              >
+                {outgoing ? "−" : "+"}
+                {decimalValidation(transaction)}
+              </Typography>
+              <IconButton
+                size="small"
+                title="Transaction details"
+                sx={{
+                  flex: "none",
+                  marginLeft: "4px",
+                  color: theme.palette.text.secondary,
+                  padding: "2px",
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  props.setTransactionDetails([transaction]);
+                }}
+              >
+                <InfoOutlinedIcon sx={{ fontSize: rf(16) }} />
+              </IconButton>
             </Box>
-          </Box>
-        ))
+          );
+        })
       ) : (
         <Box
           display="flex"
           alignItems="center"
           justifyItems="center"
           width="100%"
-          height="400px"
+          sx={{ minHeight: { xs: 260, sm: 400 }, py: 3 }}
         >
           <Box
             display="flex"
@@ -143,28 +198,31 @@ export default function TransactionList(props: any) {
             alignContent="center"
             justifyContent="center"
             flexDirection="column"
-            width="400px"
-            height="300px"
             margin="auto"
+            boxSizing="border-box"
             sx={{
+              width: "100%",
+              maxWidth: 360,
+              minHeight: { xs: 220, sm: 300 },
+              p: 3,
               border: `${theme.palette.mode == "dark"
-                ? "2px solid #454556"
+                ? "2px solid #333333"
                 : "2px solid #D7D7D7"
                 }`,
-              borderRadius: "8px",
-              backgroundColor: theme.palette.mode == "dark" ? '#2E2E3C' : '#F8F8F8'
+              borderRadius: "0px",
+              backgroundColor: theme.palette.mode == "dark" ? '#161616' : '#F8F8F8'
             }}
           >
             <Box>
-              <EmptyTransactions sx={{ width: "100px", height: "100px" }} />
+              <EmptyTransactions sx={{ width: { xs: "72px", sm: "100px" }, height: { xs: "72px", sm: "100px" } }} />
             </Box>
             <Typography mt={0.8} sx={{ fontWeight: "600" }}>
               No Transactions yet!
             </Typography>
-            <Typography mt={1} sx={{ color: "#82828D", fontSize: "12px" }}>
+            <Typography mt={1} sx={{ color: "#777777", fontSize: rf(12) }}>
               After your first transaction,
             </Typography>
-            <Typography sx={{ color: "#82828D", fontSize: "12px" }}>
+            <Typography sx={{ color: "#777777", fontSize: rf(12) }}>
               you will be able to view it here.,
             </Typography>
           </Box>

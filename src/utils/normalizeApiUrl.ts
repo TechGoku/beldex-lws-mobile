@@ -24,5 +24,14 @@ export default function normalizeApiUrl(apiUrl?: string): string {
     return `${window.location.origin}/api/`;
   }
 
+  // HTTP support: when the user *explicitly* types http:// (e.g. a self-hosted
+  // or LAN LWS with no TLS), keep the scheme so patchBeldexNetServiceUtils
+  // builds a plain-HTTP absolute request URL. Bare hosts and https:// keep the
+  // original protocol-less authority, which the SDK resolves over https - so
+  // the default/secure path is completely unchanged.
+  if (/^http:\/\//i.test(trimmedApiUrl)) {
+    return `http://${withoutTrailingSlash}/`;
+  }
+
   return `${withoutTrailingSlash}/`;
 }

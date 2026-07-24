@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import MyWallet from "../pages/myWallet";
 import Settings from "../pages/settings";
 import AddressBookPage from "../pages/myWallet/AddressBook/AddressBookPage";
+import TransactionsPage from "../pages/myWallet/TransactionHistory/TransactionsPage";
 import SecuritySettings from "../pages/settings/Security";
 import ServerConfig from "../pages/settings/ServerConfig";
 import AccountDetails from "../pages/account";
@@ -61,6 +62,14 @@ const RouteList = () => {
         element={
           <DashBoardAuth>
             <AddressBookPage />
+          </DashBoardAuth>
+        }
+      />
+      <Route
+        path={"/transactions"}
+        element={
+          <DashBoardAuth>
+            <TransactionsPage />
           </DashBoardAuth>
         }
       />

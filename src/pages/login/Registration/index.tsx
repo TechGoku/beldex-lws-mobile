@@ -60,7 +60,7 @@ export default function Registration() {
           alignItems: "center",
           flexDirection: "column",
           marginTop: "50px",
-          borderRadius: "20px",
+          borderRadius: "0px",
           position: "relative",
         }}
       >
@@ -68,8 +68,10 @@ export default function Registration() {
           textAlign="center"
           sx={{
             color: theme.palette.text.primary,
-            fontWeight: "bold",
-            fontSize: "1.5rem",
+            fontFamily: "'Michroma', 'Poppins', sans-serif",
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            fontSize: "1.3rem",
           }}
         >
           Beldex Wallet
@@ -116,7 +118,7 @@ export default function Registration() {
               width: isMobileMode ? "44px" : "6%",
               position: "absolute",
               right: isMobileMode ? "-12px" : "-26px",
-              bottom: "123px",
+              bottom: isMobileMode ? "85px" : "123px",
               minWidth: isMobileMode ? "unset" : "51px",
             }}
           >
@@ -133,7 +135,7 @@ export default function Registration() {
             color="info"
             sx={{
               width: isMobileMode ? "100%" : "200px",
-              borderRadius: isMobileMode ? "40px" : "10px",
+              borderRadius: "0px",
               fontWeight: 600,
               color: "white",
               height: "50px",
@@ -148,13 +150,12 @@ export default function Registration() {
             color="primary"
             sx={{
               fontWeight: 600,
-              // borderRadius: "10px",
-              color: "white",
+              // borderRadius: "0px",
               height: "50px",
               marginLeft: isMobileMode || istabletMode ? "0" : "10px",
               marginTop: isMobileMode ? "10px" : '10px',
               width: isMobileMode ? "100%" : "200px",
-              borderRadius: isMobileMode ? "40px" : "10px",
+              borderRadius: "0px",
             }}
             onClick={() => navigate("/createNewWallet")}
           >

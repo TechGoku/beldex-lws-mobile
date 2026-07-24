@@ -1,9 +1,9 @@
 .WalletAddressAndKeys {
-  background-color: #1c1c26;
+  background-color: #0a0a0a;
   margin-top: 20px;
   color: #fff;
   padding: 20px;
-  border-radius: 20px;
+  border-radius: 0;
 
   .address-wrapper {
     display: flex;
@@ -16,7 +16,7 @@
     // text-overflow: ellipsis;
     margin-left: 10px;
 
-    // color: #afafbe;
+    // color: #8a8a8a;
     font-weight: 400;
     position: absolute;
     text-overflow: ellipsis;
@@ -29,7 +29,7 @@
     margin-right: 50px;
   }
   .address-with-key {
-    // color: #afafbe;
+    // color: #8a8a8a;
     word-break: break-all;
     font-weight: 400;
     width: 85%;
@@ -56,6 +56,6 @@
   }
   
   .copyIcon {
-    color: #20d030;
+    color: #3ec745;
   }
 }

@@ -20,7 +20,7 @@ export async function applyStatusBarStyle(isDark: boolean): Promise<void> {
     await StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light });
     if (Capacitor.getPlatform() === "android") {
       // Match the app background so the bar doesn't sit as a grey stripe.
-      await StatusBar.setBackgroundColor({ color: isDark ? "#1C1C26" : "#FFFFFF" });
+      await StatusBar.setBackgroundColor({ color: isDark ? "#0a0a0a" : "#FFFFFF" });
     }
   } catch {
     // ignore on platforms without a configurable status bar

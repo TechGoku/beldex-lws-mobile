@@ -80,8 +80,8 @@ export default function AccountDetails() {
   };
 
   const cardSx = {
-    background: theme.palette.mode === "dark" ? "#24242F" : "#FCFCFC",
-    borderRadius: "16px",
+    background: theme.palette.mode === "dark" ? "#161616" : "#FFFFFF",
+    borderRadius: "0px",
     padding: "16px 18px",
     mt: 2,
   };
@@ -99,10 +99,11 @@ export default function AccountDetails() {
     left: "50%",
     transform: "translate(-50%, -50%)",
     width: isMobileMode ? 330 : 440,
+    maxWidth: "92vw",
     bgcolor: theme.palette.background.paper,
     boxShadow: 24,
     p: 4,
-    borderRadius: "22px",
+    borderRadius: "0px",
   };
 
   return (
@@ -111,7 +112,7 @@ export default function AccountDetails() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box sx={{ padding: isMobileMode ? "0" : "25px" }}>
@@ -178,7 +179,7 @@ export default function AccountDetails() {
                 <Button
                   variant="contained"
                   color="primary"
-                  sx={{ mt: 2, borderRadius: "10px", color: "#fff" }}
+                  sx={{ mt: 2, borderRadius: "0px", }}
                   onClick={startReveal}
                 >
                   Reveal Secrets
@@ -240,11 +241,11 @@ export default function AccountDetails() {
               recorded. These keys give full control of your funds.
             </Typography>
           </Box>
-          <Box display="flex" justifyContent="center" gap={2} mt={3}>
+          <Box display="flex" justifyContent="center" flexWrap="wrap" gap={2} mt={3}>
             <Button
               variant="contained"
               color="secondary"
-              sx={{ borderRadius: "10px", width: 130, color: theme.palette.text.primary }}
+              sx={{ borderRadius: "0px", width: 130, color: theme.palette.text.primary }}
               onClick={() => setWarnOpen(false)}
             >
               Cancel
@@ -252,7 +253,7 @@ export default function AccountDetails() {
             <Button
               variant="contained"
               color="primary"
-              sx={{ borderRadius: "10px", width: 130, color: "#fff" }}
+              sx={{ borderRadius: "0px", width: 130, }}
               onClick={confirmReveal}
             >
               Reveal
@@ -276,16 +277,16 @@ export default function AccountDetails() {
               mt: 2,
               height: 50,
               px: 2,
-              borderRadius: "12px",
-              backgroundColor: theme.palette.mode === "dark" ? "#1C1C26" : "#F2F2F2",
+              borderRadius: "0px",
+              backgroundColor: theme.palette.mode === "dark" ? "#0a0a0a" : "#f4f4f4",
               color: theme.palette.text.primary,
             }}
           />
-          <Box display="flex" justifyContent="center" gap={2} mt={3}>
-            <Button variant="contained" color="secondary" sx={{ borderRadius: "10px", width: 130, color: theme.palette.text.primary }} onClick={() => setRenameOpen(false)}>
+          <Box display="flex" justifyContent="center" flexWrap="wrap" gap={2} mt={3}>
+            <Button variant="contained" color="secondary" sx={{ borderRadius: "0px", width: 130, color: theme.palette.text.primary }} onClick={() => setRenameOpen(false)}>
               Cancel
             </Button>
-            <Button variant="contained" color="primary" sx={{ borderRadius: "10px", width: 130, color: "#fff" }} onClick={saveRename}>
+            <Button variant="contained" color="primary" sx={{ borderRadius: "0px", width: 130 }} onClick={saveRename}>
               Save
             </Button>
           </Box>

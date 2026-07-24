@@ -12,16 +12,23 @@ import normalizeApiUrl from "../utils/normalizeApiUrl";
 
 const SERVER_URL_KEY = "beldex_custom_server_url";
 const NETTYPE_KEY = "beldex_custom_nettype";
+// Fallback relay endpoint (see relay/cloudflare-worker.js). Some ISPs block the
+// whole *.beldex.io domain (DNS hijack + TLS SNI reset), which no DNS change or
+// alternate port defeats. A relay on an unblocked host (e.g. *.workers.dev)
+// reaches the LWS from outside the ISP, so users need install nothing.
+const RELAY_URL_KEY = "beldex_relay_url";
 
 interface RuntimeConfigCache {
   serverUrl: string | null; // null => use env default
   nettype: number | null; // null => use env default
+  relayUrl: string | null; // null => use env default (may be empty = disabled)
   loaded: boolean;
 }
 
 const cache: RuntimeConfigCache = {
   serverUrl: null,
   nettype: null,
+  relayUrl: null,
   loaded: false,
 };
 
@@ -36,11 +43,13 @@ function envNetType(): number {
 
 export async function loadRuntimeConfig(): Promise<void> {
   try {
-    const [url, nettype] = await Promise.all([
+    const [url, nettype, relay] = await Promise.all([
       Preferences.get({ key: SERVER_URL_KEY }),
       Preferences.get({ key: NETTYPE_KEY }),
+      Preferences.get({ key: RELAY_URL_KEY }),
     ]);
     cache.serverUrl = url.value && url.value.trim() ? url.value.trim() : null;
+    cache.relayUrl = relay.value != null ? relay.value.trim() : null;
     if (nettype.value != null && nettype.value !== "") {
       const n = parseInt(nettype.value, 10);
       cache.nettype = Number.isNaN(n) ? null : n;
@@ -50,8 +59,22 @@ export async function loadRuntimeConfig(): Promise<void> {
   } catch {
     cache.serverUrl = null;
     cache.nettype = null;
+    cache.relayUrl = null;
   }
   cache.loaded = true;
+}
+
+// Effective relay URL: user override, else the build-time default. Empty string
+// means "no relay configured" (fallback disabled).
+export function getRelayUrl(): string {
+  const v = cache.relayUrl ?? (process.env.FALLBACK_RELAY_URL || "");
+  return (v || "").trim().replace(/\/+$/, "");
+}
+
+export async function saveRelayUrl(relayUrl: string): Promise<void> {
+  const trimmed = relayUrl.trim();
+  await Preferences.set({ key: RELAY_URL_KEY, value: trimmed });
+  cache.relayUrl = trimmed;
 }
 
 // Effective raw server URL (override, else env default).

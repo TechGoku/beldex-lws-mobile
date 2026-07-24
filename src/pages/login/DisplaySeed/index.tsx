@@ -13,6 +13,7 @@ import { setSeedDetails } from "../../../stores/features/seedDetailSlice";
 import { useNavigate } from "react-router-dom";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { rf } from "../../../utils/responsiveFont";
 import { useTheme } from "@emotion/react";
 import { useAppSelector } from "../../../stores/hooks";
 import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
@@ -70,14 +71,14 @@ export default function DisplaySeed() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >     {/* {loading && <Loader /> }  */}
       <Box
         className="DisplaySeed"
         sx={{
           padding: isMobileMode ? "25px 0" : '30px 45px',
-          height: 'calc(100vh - 110px)',
+          height: 'calc(100dvh - 110px)',
           overflow: 'auto',
         }}
       >
@@ -85,12 +86,12 @@ export default function DisplaySeed() {
           sx={{
             padding: isMobileMode ? "15px" : "20px 50px",
             backgroundColor: (theme) => theme.palette.primary.light,
-            borderRadius: "20px",
+            borderRadius: "0px",
           }}
         >
           <Typography
             textAlign="center"
-            sx={{ color: theme.palette.text.primary, fontWeight: "bold", fontSize: "1.5rem" }}
+            sx={{ color: theme.palette.text.primary, fontWeight: "bold", fontSize: "1.2rem" }}
           >
             Create New Wallet
           </Typography>
@@ -107,16 +108,19 @@ export default function DisplaySeed() {
             <Typography
               sx={{
                 width: "100%",
-                color: (theme) => theme.palette.text.secondary,
-                backgroundColor: (theme) => theme.palette.mode === "dark" ? "#1F1F2E" : "#F5F5F5",
+                // Extension .seed: green mono text in a green dashed box.
+                color: (theme) => theme.palette.primary.main,
+                backgroundColor: (theme) => theme.palette.mode === "dark" ? "#0d0d0d" : "#fbfbfb",
+                border: (theme) => `1px dashed ${theme.palette.primary.main}`,
+                wordSpacing: "4px",
                 padding: isMobileMode ? "20px" : "20px 25px",
-                borderRadius: "10px",
+                borderRadius: "0px",
                 lineHeight: 1.75,
                 overflow: "auto",
                 fontWeight: 400,
                 display: "flex",
                 alignItems: "center",
-                fontSize: isMobileMode ? "11px" : "1rem",
+                fontSize: isMobileMode ? rf(11) : "1rem",
               }}
             >{secretKeys?.mnemonic_string}</Typography>
             <Box
@@ -130,15 +134,16 @@ export default function DisplaySeed() {
                 onClick={() => copyText(secretKeys?.mnemonic_string)}
                 disabled={!secretKeys?.mnemonic_string}
                 sx={{
-                  backgroundColor: "#128B17",
-                  boxShadow:
-                    "0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19)",
+                  // Extension .btn-icon: green glyph on a hairline border.
+                  backgroundColor: "transparent",
+                  border: (theme: any) => `1px solid ${theme.palette.divider}`,
+                  color: (theme: any) => theme.palette.primary.main,
                   width: "40px",
                   height: "40px",
                   display: "flex",
                   justifyContent: "center",
                   alignItems: "center",
-                  borderRadius: "50px",
+                  borderRadius: "0px",
 
                   marginLeft: isMobileMode ? "8px" : "20px",
                   cursor: "pointer",
@@ -146,7 +151,7 @@ export default function DisplaySeed() {
               >
                 <ContentCopyIcon
                   sx={{
-                    fill: "#FFFFFF",
+                    fill: "currentColor",
                     fontSize: "1rem",
                   }}
                 />
@@ -155,10 +160,10 @@ export default function DisplaySeed() {
           </Box>
 
           <Typography
-            sx={{ fontWeight: 400, fontSize: isMobileMode ? "12px" : "1rem" }}
+            sx={{ fontWeight: 400, fontSize: isMobileMode ? rf(12) : "1rem" }}
             mt={3}
           >
-            <Typography component="span" sx={{ color: "#FF2424" }} mr={1}>
+            <Typography component="span" sx={{ color: "#ff5c5c" }} mr={1}>
               Note :
             </Typography>
             This is the way to use the access your wallet if you switch devices,
@@ -175,10 +180,10 @@ export default function DisplaySeed() {
                 style: {
                   paddingTop: "10px",
                   paddingBottom: "10px",
-                  // backgroundColor: "#303045",
+                  // backgroundColor: "#222222",
                   color: theme.palette.text.primary,
                   backgroundColor: theme.palette.secondary.main,
-                  borderRadius: "5px",
+                  borderRadius: "0px",
                   fontWeight: 400,
                 },
               }}
@@ -187,7 +192,7 @@ export default function DisplaySeed() {
               sx={{
                 color: theme.palette.text.primary,
                 backgroundColor: (theme: any) => theme.palette.secondary.main,
-                borderRadius: "10px",
+                borderRadius: "0px",
                 marginLeft: "10px",
                 marginTop: "16px",
                 "& .MuiSelect-icon": {
@@ -225,7 +230,7 @@ export default function DisplaySeed() {
               onClick={() => navigate('/createNewWallet')}
               sx={{
                 width: isMobileMode ? "70%" : '150px',
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 fontWeight: 600,
                 height: "50px",
                 marginTop: "10px",
@@ -240,10 +245,9 @@ export default function DisplaySeed() {
               onClick={() => next()}
               sx={{
                 width: isMobileMode ? "70%" : '150px',
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 fontWeight: 600,
                 height: "50px",
-                color: "#FFF",
                 marginTop: "10px",
               }}
             >

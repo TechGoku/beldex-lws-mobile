@@ -13,7 +13,7 @@ const Loader = () => {
         transform: "translate(-50%, -50%)",
         backgroundColor: "rgba(0, 0, 0, 0.8)",
         padding: "20px",
-        borderRadius: "5px",
+        borderRadius: "0px",
         boxShadow: "0 0 10px rgba(0, 0, 0, 0.2)",
         zIndex: (theme: any) => theme.zIndex.modal + 1,
       }}

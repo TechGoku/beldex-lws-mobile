@@ -37,15 +37,15 @@ module.exports = {
 
       {
         test: /\.(jpe?g|png|gif|svg|woff2?|ttf|eot)$/i,
-        // test: /\.svg(\?.*)?$/,
-        use: [
-          {
-            loader: 'url-loader',
-            options: {
-              limit: 10000,
-            }
-          }
-        ]
+        // webpack 5 asset modules, NOT url-loader: with url-loader the emitted
+        // .woff assets contained the JS module source ("export default ...")
+        // instead of font bytes, so the WebView failed to decode every font.
+        type: 'asset',
+        parser: {
+          dataUrlCondition: {
+            maxSize: 10000,
+          },
+        },
       },
       {
         test: /\.css$/i,

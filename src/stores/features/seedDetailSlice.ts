@@ -20,6 +20,13 @@ export interface seedDetailState {
     timer?: number;
     isLogin?: boolean,
     transactionPoolHistory?: Array<any>;
+    // Chain sync progress, surfaced in the app header. Polled by Balance.
+    scannedHeight?: number;
+    chainHeight?: number;
+    // true when the last wallet API poll failed / timed out (network trouble
+    // or a blocked endpoint). Surfaced in the header so a silent stall becomes
+    // a visible "can't reach server" state.
+    connectionError?: boolean;
 
 }
 
@@ -37,7 +44,10 @@ export const initialState: seedDetailState = {
     unlocked_balance: 0,
     isLogin: false,
     timer: 120,
-    transactionPoolHistory: []
+    transactionPoolHistory: [],
+    scannedHeight: 0,
+    chainHeight: 0,
+    connectionError: false
 }
 
 const seedDetailSlice = createSlice({
@@ -69,11 +79,18 @@ const seedDetailSlice = createSlice({
         },
         setTransactionhistory(state, action) {
             state.transactionPoolHistory = action.payload;
+        },
+        setSyncState(state, action) {
+            state.scannedHeight = action.payload.scannedHeight;
+            state.chainHeight = action.payload.chainHeight;
+        },
+        setConnectionError(state, action) {
+            state.connectionError = action.payload;
         }
     }
 })
 
-export const { setSeedDetails, toggleLoading, setBalance, setIdleTimer, setTransactionhistory ,setUserLogout} = seedDetailSlice.actions;
+export const { setSeedDetails, toggleLoading, setBalance, setIdleTimer, setTransactionhistory, setSyncState, setConnectionError, setUserLogout} = seedDetailSlice.actions;
 export const seedDetailSelector = (state: RootState) => state.seedDetailReducer;
 
 export default seedDetailSlice.reducer;

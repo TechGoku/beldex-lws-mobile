@@ -1,35 +1,21 @@
 import React, { Fragment } from "react";
+import { rf } from "../../utils/responsiveFont";
 import {
-  List,
   AppBar,
-  ListItemButton,
   Box,
-  ListItemIcon,
-  ListItemText,
   Typography,
   Toolbar,
-  Paper,
-  Grow,
-  Popper,
   IconButton,
   useTheme,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import InboxIcon from "@mui/icons-material/Inbox";
-import ClickAwayListener from "@mui/material/ClickAwayListener";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import LogoDark from "../../icons/LogoDark";
 import LogoWhite from "../../icons/LogoWhite";
 import SettingIconDark from "../../icons/SettingIconDark";
-import MoonDark from "../../icons/MoonDark";
 import MenuDark from "../../icons/MenuDark";
-import { ColorContext } from "../../ColorContext";
 import { useSelector } from "react-redux";
-import MyWallet from "../../icons/MyWallet";
-import Privacy from "../../icons/Privacy";
-import Term from "../../icons/Terms";
-import Support from "../../icons/Support";
-import { MUIWrapperContext } from "../../theme/MUIWrapper";
+import SideDrawer from "../sideDrawer/SideDrawer";
 const styles = {
   logoContainer: {
     padding: 0,
@@ -43,11 +29,48 @@ const styles = {
   menuIconContainer: {
     marginLeft: "auto",
   },
+  // Right-side header actions (theme / settings / menu): evenly spaced
+  // chip buttons so they read as controls, not floating glyphs. Shrinks on
+  // very small phones so the wallet chip + 2 icon buttons + logo all fit
+  // in a 320-360px viewport.
+  actionBar: {
+    marginLeft: "auto",
+    display: "flex",
+    alignItems: "center",
+    gap: { xs: "6px", sm: "10px" },
+  },
+  actionBtn: {
+    // 44px meets the 44x44pt/48x48dp minimum touch-target guideline -
+    // the previous 34px on mobile was noticeably under it.
+    width: { xs: 44, sm: 44 },
+    height: { xs: 44, sm: 44 },
+    borderRadius: "0px",
+    border: "1px solid",
+    borderColor: (theme: any) =>
+      theme.palette.mode === "dark" ? "#222222" : "#dddddd",
+    backgroundColor: (theme: any) => theme.palette.background.paper,
+    "&:hover": {
+      borderColor: (theme: any) => theme.palette.primary.main,
+      backgroundColor: (theme: any) => theme.palette.background.paper,
+    },
+  },
+  actionBtnActive: {
+    borderColor: (theme: any) => theme.palette.primary.main,
+    backgroundColor: (theme: any) =>
+      theme.palette.mode === "dark"
+        ? "rgba(62, 199, 69, 0.12)"
+        : "rgba(47, 162, 54, 0.12)",
+  },
   appbar: {
     boxShadow: "none",
     background: (theme: any) => theme.palette.background.default,
-    padding: "10px 30px 5px 30px",
-    zIndex: (theme: any) => theme.zIndex.modal + 1,
+    // AppBar defaults to primary.contrastText (white), which vanishes on the
+    // light background - always use the theme's text color instead.
+    color: (theme: any) => theme.palette.text.primary,
+    padding: { xs: "10px 12px 5px 12px", sm: "10px 30px 5px 30px" },
+    // Standard appBar layer: modals/drawers (1200+) must cover the header.
+    // (It used to sit at modal+1, which pinned it above every dialog.)
+    zIndex: (theme: any) => theme.zIndex.appBar,
   },
 };
 
@@ -89,21 +112,41 @@ const DesktopNavigation = () => {
         justifyContent: "space-between",
       }}
     >
-      <Typography sx={{ fontSize: "20px", fontWeight: "bold" }}>
+      <Typography
+        sx={{
+          fontSize: rf(15),
+          fontFamily: "'Michroma', 'Poppins', sans-serif",
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+        }}
+      >
         {titleValidator()}
       </Typography>
       <Box>
         {/* <BaseButton label="LOGOUT" variant='contained' cbFunction={() => navigate('/')} /> */}
-        <IconButton
-          sx={styles.menuIconContainer}
-          onClick={() => navigate("/settings")}
-        >
-          {walletDetails.isLogin && (
+        {walletDetails.isLogin && (
+          <IconButton
+            aria-label="Settings"
+            sx={{
+              ...styles.actionBtn,
+              ...(location === "/settings" ? styles.actionBtnActive : {}),
+            }}
+            onClick={() => navigate("/settings")}
+          >
             <SettingIconDark
-              styles={{ fill:location==='/settings'?'#19AD1C' :(theme: any) => theme.palette.secondary.light }}
+              styles={{
+                width: "18px",
+                height: "18px",
+                fill: (theme: any) =>
+                  location === "/settings"
+                    ? theme.palette.primary.main
+                    : theme.palette.mode === "dark"
+                      ? "#EBEBEB"
+                      : "#3a3a3a",
+              }}
             />
-          )}
-        </IconButton>
+          </IconButton>
+        )}
       </Box>
     </Box>
   );
@@ -111,309 +154,114 @@ const DesktopNavigation = () => {
 
 const MobileNavigation = () => {
   const [openMenu, setOpenMenu] = React.useState(false);
-  const anchorRef = React.useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
-  const muiUtils: any = React.useContext(MUIWrapperContext);
   const walletDetails = useSelector((state: any) => state.seedDetailReducer);
-  const location = window.location.pathname;
-
-  function handleListKeyDown(event: React.KeyboardEvent) {
-    if (event.key === "Tab") {
-      event.preventDefault();
-      setOpenMenu(false);
-    } else if (event.key === "Escape") {
-      setOpenMenu(false);
-    }
-  }
-
-  const handleClose = (event: Event | React.SyntheticEvent) => {
-    if (
-      anchorRef.current &&
-      anchorRef.current.contains(event.target as HTMLElement)
-    ) {
-      return;
-    }
-
-    setOpenMenu(false);
-  };
-
-  // return focus to the button when we transitioned from !open -> open
-  const prevOpen = React.useRef(openMenu);
-  React.useEffect(() => {
-    if (prevOpen.current === true && openMenu === false) {
-      anchorRef.current!.focus();
-    }
-
-    prevOpen.current = openMenu;
-  }, [openMenu]);
+  const { wallets, activeId } = useSelector((state: any) => state.walletsReducer);
+  const activeName = wallets?.find((w: any) => w.id === activeId)?.name;
 
   return (
     <React.Fragment>
-      <Popper
-        open={openMenu}
-        anchorEl={anchorRef.current}
-        role={undefined}
-        placement="bottom-start"
-        transition
-        disablePortal
-      >
-        {({ TransitionProps, placement }) => (
-          <Grow
-            {...TransitionProps}
-            style={{
-              transformOrigin:
-                placement === "bottom-start" ? "left top" : "left bottom",
+      <Box sx={styles.actionBar}>
+        {/* Extension-style wallet chip: shows the active wallet, tap to switch */}
+        {walletDetails.isLogin && activeName && (
+          <Box
+            component="button"
+            onClick={() => navigate("/wallets")}
+            sx={{
+              // matches the 44px actionBtn touch target it sits beside
+              height: { xs: 44, sm: 44 },
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: { xs: "0 8px", sm: "0 12px" },
+              maxWidth: { xs: "76px", sm: "110px" },
+              cursor: "pointer",
+              background: "transparent",
+              border: "1px solid",
+              borderColor: (theme: any) =>
+                theme.palette.mode === "dark" ? "#222222" : "#E4E4E4",
+              color: (theme: any) => theme.palette.primary.main,
+              fontFamily: "'Space Mono', monospace",
+              fontSize: { xs: "11px", sm: "13px" },
+              fontWeight: 700,
             }}
           >
-            <Paper
-              sx={{
-                // width: "100%",
-                maxWidth: 200,
-                padding: 2,
-                background: (theme: any) => theme.palette.background.paper,
-                borderRadius: "25px",
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-              }}
+            <Box
+              component="span"
+              sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
             >
-              <ClickAwayListener onClickAway={handleClose}>
-                <List onKeyDown={handleListKeyDown}>
-                  <ListItemButton
-                    sx={{
-                      m: 0.5,
-                      p: 2,
-                      maxHeight: "60px",
-                      "&.Mui-selected": {
-                        // theme.palette.mode
-                        background: (theme: any) => theme.palette.common.white,
-                        borderRadius: "15px",
-                        "&:hover": {
-                          background: (theme: any) =>
-                            theme.palette.common.white,
-                        },
-                      },
-                    }}
-                    onClick={() => {
-                      setOpenMenu(false); navigate("/mywallet");
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: "40px" }}>
-                      <MyWallet
-                        sx={{
-                          fill: (theme: any) => theme.palette.secondary.light,
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        ".MuiListItemText-primary": {
-                          fontWeight: "400",
-                        },
-                      }}
-                      primary="Wallet"
-                    />
-                  </ListItemButton>
-                  <ListItemButton
-                    sx={{
-                      m: 0.5,
-                      p: 2,
-                      maxHeight: "60px",
-                      "&.Mui-selected": {
-                        background: (theme: any) => theme.palette.common.white,
-                        borderRadius: "15px",
-                        "&:hover": {
-                          background: (theme: any) =>
-                            theme.palette.common.white,
-                        },
-                      },
-                    }}
-                    onClick={() => {
-                      setOpenMenu(false); navigate("/privacy");
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: "40px" }}>
-                      {/* <DraftsIcon
-              sx={{ fill: selectedIndex === 1 ? "#00D030" : "#D1D1D3" }}
-            /> */}
-                      <Privacy
-                        sx={{
-                          fill: (theme: any) => theme.palette.secondary.light,
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        ".MuiListItemText-primary": {
-                          fontWeight: "400",
-                        },
-                      }}
-                      primary="Privacy"
-                    />
-                  </ListItemButton>
-                  <ListItemButton
-                    sx={{
-                      m: 0.5,
-                      p: 2,
-                      maxHeight: "60px",
-                      "&.Mui-selected": {
-                        background: (theme: any) => theme.palette.common.white,
-                        borderRadius: "15px",
-                        "&:hover": {
-                          background: (theme: any) =>
-                            theme.palette.common.white,
-                        },
-                      },
-                    }}
-                    onClick={() => {
-                      setOpenMenu(false); navigate("/terms");
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: "40px" }}>
-                      <Term
-                        sx={{
-                          fill: (theme: any) => theme.palette.secondary.light,
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        ".MuiListItemText-primary": {
-                          fontWeight: "400",
-                        },
-                      }}
-                      primary="Terms"
-                    />
-                  </ListItemButton>
-                  <ListItemButton
-                    sx={{
-                      m: 0.5,
-                      p: 2,
-                      maxHeight: "60px",
-                      "&.Mui-selected": {
-                        background: (theme: any) => theme.palette.common.white,
-                        borderRadius: "15px",
-                        "&:hover": {
-                          background: (theme: any) =>
-                            theme.palette.common.white,
-                        },
-                      },
-                    }}
-                    onClick={() => {setOpenMenu(false); navigate("/support")}}
-                  >
-                    <ListItemIcon sx={{ minWidth: "40px" }}>
-                      <Support
-                        sx={{
-                          fill: (theme: any) => theme.palette.secondary.light,
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        ".MuiListItemText-primary": {
-                          fontWeight: "400",
-                        },
-                      }}
-                      primary="Supports"
-                    />
-                  </ListItemButton>
-                  {/* <ListItemButton
-                    sx={{
-                      m: 0.5,
-                      p: 2,
-                      maxHeight: "60px",
-                      "&.Mui-selected": {
-                        background: (theme: any) => theme.palette.common.white,
-                        borderRadius: "15px",
-                        "&:hover": {
-                          background: (theme: any) =>
-                            theme.palette.common.white,
-                        },
-                      },
-                    }}
-                  >
-                    <ListItemIcon sx={{ minWidth: "40px" }}>
-                      <InboxIcon
-                        sx={{
-                          fill: (theme: any) => theme.palette.secondary.light,
-                        }}
-                      />
-                    </ListItemIcon>
-                    <ListItemText
-                      sx={{
-                        color: (theme) => theme.palette.text.secondary,
-                        ".MuiListItemText-primary": {
-                          fontWeight: "400",
-                        },
-                      }}
-                      primary="Website"
-                    />
-                  </ListItemButton> */}
-                </List>
-                {/* <MenuList
-                  autoFocusItem={openMenu}
-
-                  id="composition-menu"
-                  aria-labelledby="composition-button"
-                  onKeyDown={handleListKeyDown}
-                >
-                  <MenuItem onClick={handleClose}>Profile</MenuItem>
-                  <MenuItem onClick={handleClose}>My account</MenuItem>
-                  <MenuItem onClick={handleClose}>Logout</MenuItem>
-                </MenuList> */}
-              </ClickAwayListener>
-            </Paper>
-          </Grow>
+              {activeName}
+            </Box>
+            ▾
+          </Box>
         )}
-      </Popper>
-
-      <IconButton
-        sx={styles.menuIconContainer}
-        onClick={muiUtils.toggleColorMode}
-      >
-        <MoonDark
-          styles={{
-            width: "20px",
-            height: "20px",
-            fill: (theme: any) =>
-              theme.palette.mode === "dark" ? "#D1D1D3" : "#818181",
-          }}
-        />
-      </IconButton>
-      {walletDetails.isLogin && (
-        <IconButton onClick={() => navigate("/settings")}>
-          <SettingIconDark
+        <IconButton
+          aria-label="Open menu"
+          aria-expanded={openMenu ? "true" : undefined}
+          aria-haspopup="true"
+          sx={styles.actionBtn}
+          onClick={() => setOpenMenu(true)}
+        >
+          <MenuDark
             styles={{
               width: "20px",
-              height: "20px",
-              fill:location==='/settings'?'#19AD1C' :(theme: any) => theme.palette.secondary.light
-
+              height: "18px",
+              fill: (theme: any) =>
+                theme.palette.mode === "dark" ? "#EBEBEB" : "#3a3a3a",
             }}
           />
         </IconButton>
-      )}
-      <IconButton
-        ref={anchorRef}
-        id="composition-button"
-        aria-controls={openMenu ? "composition-menu" : undefined}
-        aria-expanded={openMenu ? "true" : undefined}
-        aria-haspopup="true"
-        onClick={() => setOpenMenu(!openMenu)}
-      >
-        <MenuDark
-          styles={{
-            width: "22px",
-            height: "20px",
-            fill: (theme: any) =>
-              theme.palette.mode === "dark" ? "#D1D1D3" : "#818181",
-          }}
-        />
-      </IconButton>
+      </Box>
+      <SideDrawer open={openMenu} onClose={() => setOpenMenu(false)} />
     </React.Fragment>
+  );
+};
+
+// Chain sync status, moved out of the Balance card into the header so it reads
+// as a global connection indicator. Data is polled by Balance and pushed to
+// Redux (seedDetailSlice.setSyncState).
+const SyncStatus = () => {
+  const { scannedHeight = 0, chainHeight = 0, isLogin, connectionError = false } = useSelector(
+    (state: any) => state.seedDetailReducer
+  );
+  if (!isLogin) return null;
+  // Network trouble takes priority over the height readout — show it even at
+  // height 0 (e.g. the endpoint is blocked and the very first poll timed out),
+  // so a stalled wallet reads as "can't reach server" rather than empty.
+  if (connectionError) {
+    return (
+      <Typography
+        sx={{
+          fontSize: { xs: rf(9.5), sm: rf(11) },
+          fontWeight: 400,
+          whiteSpace: "nowrap",
+          lineHeight: 1.2,
+          color: (theme: any) => theme.palette.error.main,
+        }}
+      >
+        ⚠ No connection
+      </Typography>
+    );
+  }
+  if (scannedHeight <= 0) return null;
+  const tip = Math.max(scannedHeight, chainHeight);
+  const synced = scannedHeight >= tip;
+  const pct = tip > 0 ? Math.min(100, (scannedHeight / tip) * 100) : 0;
+  return (
+    <Typography
+      sx={{
+        fontSize: { xs: rf(9.5), sm: rf(11) },
+        fontWeight: 400,
+        whiteSpace: "nowrap",
+        lineHeight: 1.2,
+        color: (theme: any) =>
+          synced ? theme.palette.primary.main : theme.palette.warning.main,
+      }}
+    >
+      {synced
+        ? `● ${scannedHeight.toLocaleString()}`
+        : `◌ ${scannedHeight.toLocaleString()} · ${pct.toFixed(1)}%`}
+    </Typography>
   );
 };
 
@@ -427,17 +275,30 @@ const Header = () => {
         <Toolbar disableGutters={true}>
           <Box sx={styles.logoContainer} onClick={() => navigate("/")}>
             {theme.palette.mode === "dark" ? (
-              <LogoDark sx={{ width: "2.2em", height: "2.2em" }} />
+              <LogoDark sx={{ width: { xs: "1.8em", sm: "2.2em" }, height: { xs: "1.8em", sm: "2.2em" } }} />
             ) : (
-              <LogoWhite sx={{ width: "2.2em", height: "2.2em" }} />
+              <LogoWhite sx={{ width: { xs: "1.8em", sm: "2.2em" }, height: { xs: "1.8em", sm: "2.2em" } }} />
             )}
             <Box>
-              <Typography sx={{ fontSize: "18px", fontWeight: "bold" }}>
-                Beldex&nbsp;Wallet
+              <Typography
+                sx={{
+                  fontSize: { xs: "11px", sm: "14px" },
+                  fontFamily: "'Michroma', 'Poppins', sans-serif",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {/* Extension brand: just "BELDEX" on mobile so the wallet
+                    chip and actions fit on small screens */}
+                {isMobileMode ? "Beldex" : <>Beldex&nbsp;Wallet</>}
               </Typography>
-              <Typography sx={{ fontSize: "13px", fontWeight: 400 }}>
-                {process.env.WEB_VERSION}
-              </Typography>
+              <SyncStatus />
+              {!isMobileMode && (
+                <Typography sx={{ fontSize: rf(13), fontWeight: 400 }}>
+                  {process.env.WEB_VERSION}
+                </Typography>
+              )}
             </Box>
           </Box>
           {isMobileMode ? <MobileNavigation /> : <DesktopNavigation />}

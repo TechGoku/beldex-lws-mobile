@@ -2,6 +2,7 @@ import React from "react";
 import { Box, ButtonBase, Typography } from "@mui/material";
 import BackspaceOutlinedIcon from "@mui/icons-material/BackspaceOutlined";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
+import { rf } from "../../utils/responsiveFont";
 
 export const PIN_LENGTH = 6;
 
@@ -58,12 +59,12 @@ export default function PinPad({ value, onChange, onBiometric, error, disabled }
                 borderRadius: "50%",
                 transition: "all 0.15s",
                 backgroundColor: error
-                  ? "#FC2727"
+                  ? "#ff5c5c"
                   : filled
-                  ? "#00D030"
+                  ? "#3ec745"
                   : "transparent",
                 border: (theme) =>
-                  `2px solid ${error ? "#FC2727" : filled ? "#00D030" : theme.palette.text.secondary}`,
+                  `2px solid ${error ? "#ff5c5c" : filled ? "#3ec745" : theme.palette.text.secondary}`,
               }}
             />
           );
@@ -81,7 +82,7 @@ export default function PinPad({ value, onChange, onBiometric, error, disabled }
         {/* bottom-left: biometric or blank */}
         {onBiometric ? (
           <PadButton onClick={onBiometric} disabled={disabled} variant="icon">
-            <FingerprintIcon sx={{ fontSize: 30, color: "#00D030" }} />
+            <FingerprintIcon sx={{ fontSize: rf(30), color: "#3ec745" }} />
           </PadButton>
         ) : (
           <Box />
@@ -92,7 +93,7 @@ export default function PinPad({ value, onChange, onBiometric, error, disabled }
         </PadButton>
 
         <PadButton onClick={backspace} disabled={disabled} variant="icon">
-          <BackspaceOutlinedIcon sx={{ fontSize: 26 }} />
+          <BackspaceOutlinedIcon sx={{ fontSize: rf(26) }} />
         </PadButton>
       </Box>
     </Box>
@@ -119,14 +120,14 @@ function PadButton({ children, onClick, disabled, variant = "digit" }: PadButton
         // Material ripple gives real touch feedback; keep a subtle pressed
         // tint as well so it reads even on slow devices.
         "&:active": {
-          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "#32324A" : "#E8E8E8"),
+          backgroundColor: (theme) => (theme.palette.mode === "dark" ? "#222222" : "#E8E8E8"),
         },
         "& .MuiTouchRipple-child": {
-          backgroundColor: "#00D030",
+          backgroundColor: "#3ec745",
         },
       }}
     >
-      <Typography sx={{ fontSize: 28, fontWeight: 500, color: "text.primary" }}>
+      <Typography sx={{ fontSize: rf(28), fontWeight: 500, color: "text.primary" }}>
         {children}
       </Typography>
     </ButtonBase>

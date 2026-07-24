@@ -78,51 +78,37 @@ export default function SignInWithKey(props: any) {
           coreBridgeInstance.nettype
         );
       if (loginValidate.isValid === false) {
+        setLoading(false)
         // actually don't think we're expecting this..
         console.log("Invalid input...");
         return;
       }
-      const loginCB = (
-        login__err: any,
-        new_address: any,
-        received__generated_locally: any,
-        start_height: any
-      ) => {
-        console.log("---login__err-", login__err);
-        if (login__err) {
-          // already logged
-          console.log("login__err:", login__err);
-          return;
-        }
-        console.log("---new_address-", new_address);
-        console.log(
-          "---received__generated_locally-",
-          received__generated_locally
-        );
-        console.log("---start_height-", start_height);
-
-        const store = {
-          address_string: userAddress,
-          sec_viewKey_string: userViewKey,
-          sec_spendKey_string: userSpendKey,
-          mnemonic_string: "N/A",
-          pub_spendKey_string: loginValidate.pub_spendKey_string,
-          pub_viewKey_string: loginValidate.pub_viewKey_string,
-          isLogin: true,
-        };
-        
-
-        dispatch(setSeedDetails(store));
-        setShowErrMsg(false);
-        setErrMsg("");
-        setLoading(false)
-        navigate("/mywallet");
+      const store = {
+        address_string: userAddress,
+        sec_viewKey_string: userViewKey,
+        sec_spendKey_string: userSpendKey,
+        mnemonic_string: "N/A",
+        pub_spendKey_string: loginValidate.pub_spendKey_string,
+        pub_viewKey_string: loginValidate.pub_viewKey_string,
+        isLogin: true,
       };
+      dispatch(setSeedDetails(store));
+      setShowErrMsg(false);
+      setErrMsg("");
+      // Keys are valid locally, so enter the wallet immediately instead of
+      // blocking on the LWS login call (which hangs on a blocked/unreachable
+      // server and used to leave the user stuck on a full-screen spinner with
+      // no way to reach Settings). The dashboard syncs once reachable.
+      setLoading(false)
+      navigate("/mywallet");
+      // Fire-and-forget server registration.
       coreBridgeInstance.hostedMoneroAPIClient.LogIn(
         userAddress,
         userViewKey,
         false,
-        loginCB
+        (login__err: any) => {
+          if (login__err) console.log("login__err (background):", login__err);
+        }
       );
     } catch (error) {
       let Error = typeof error === "string" ? error : "" + error;
@@ -147,7 +133,7 @@ export default function SignInWithKey(props: any) {
         className="SignInWithKey"
         sx={{
           padding: isMobileMode ? "25px 0" : "30px 45px",
-          height: "calc(100vh - 110px)",
+          height: "calc(100dvh - 110px)",
           overflow: "auto",
         }}
       >
@@ -155,7 +141,7 @@ export default function SignInWithKey(props: any) {
           sx={{
             padding: isMobileMode ? "15px" : "20px 50px",
             backgroundColor: (theme) => theme.palette.primary.light,
-            borderRadius: "20px",
+            borderRadius: "0px",
           }}
         >
           <Typography
@@ -163,7 +149,7 @@ export default function SignInWithKey(props: any) {
             sx={{
               color: theme.palette.text.primary,
               fontWeight: "bold",
-              fontSize: "1.5rem",
+              fontSize: "1.2rem",
             }}
           >
             Existing Wallet
@@ -186,7 +172,7 @@ export default function SignInWithKey(props: any) {
                 color: (theme) => theme.palette.text.secondary,
                 backgroundColor: (theme) => theme.palette.secondary.main,
                 padding: "10px 20px",
-                borderRadius: "18px",
+                borderRadius: "0px",
                 overflow: "auto",
               }}
             />
@@ -210,7 +196,7 @@ export default function SignInWithKey(props: any) {
                 color: (theme) => theme.palette.text.secondary,
                 backgroundColor: (theme) => theme.palette.secondary.main,
                 padding: "10px 20px",
-                borderRadius: "18px",
+                borderRadius: "0px",
                 overflow: "auto",
               }}
             />
@@ -236,7 +222,7 @@ export default function SignInWithKey(props: any) {
                 color: (theme) => theme.palette.text.secondary,
                 backgroundColor: (theme) => theme.palette.secondary.main,
                 padding: "10px 20px",
-                borderRadius: "18px",
+                borderRadius: "0px",
                 overflow: "auto",
 
                 //   marginTop: "10px",
@@ -254,7 +240,7 @@ export default function SignInWithKey(props: any) {
               onClick={() => signInWithAddress()}
               sx={{
                 fontWeight: 500,
-                color: "#289AFB",
+                color: "#1574ad",
                 textDecoration: "underline",
                 cursor: "pointer",
               }}
@@ -264,7 +250,7 @@ export default function SignInWithKey(props: any) {
           </Typography>
           {showErrMsg && (
             <Typography
-              sx={{ color: "#FF2424", fontWeight: 400, textAlign: "center" }}
+              sx={{ color: "#ff5c5c", fontWeight: 400, textAlign: "center" }}
               mt={1}
             >
               {errMsg}
@@ -285,7 +271,7 @@ export default function SignInWithKey(props: any) {
               color="secondary"
               sx={{
                 width: isMobileMode ? "70%" : "150px",
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 fontWeight: 600,
                 height: "50px",
                 marginTop: "10px",
@@ -299,10 +285,9 @@ export default function SignInWithKey(props: any) {
               color="primary"
               sx={{
                 fontWeight: 600,
-                color: "white",
                 height: "50px",
                 width: isMobileMode ? "70%" : "150px",
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 marginTop: "10px",
               }}
               onClick={validatingInputKeys}

@@ -99,7 +99,7 @@ const LogoWhite = (props: any) => {
             y2="35.7"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#31A036" />
+            <stop stopColor="#2fa236" />
             <stop offset="1" stopColor="#45D94C" />
           </linearGradient>
           <linearGradient
@@ -110,7 +110,7 @@ const LogoWhite = (props: any) => {
             y2="35.71"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#31A036" />
+            <stop stopColor="#2fa236" />
             <stop offset="0.24" stopColor="#33A638" />
             <stop offset="0.54" stopColor="#39B63F" />
             <stop offset="0.89" stopColor="#42D149" />
@@ -124,9 +124,9 @@ const LogoWhite = (props: any) => {
             y2="25.0099"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#51F859" />
+            <stop stopColor="#3ec745" />
             <stop offset="0.51" stopColor="#231F20" />
-            <stop offset="1" stopColor="#51F859" />
+            <stop offset="1" stopColor="#3ec745" />
           </linearGradient>
           <linearGradient
             id="paint6_linear_1207_201"

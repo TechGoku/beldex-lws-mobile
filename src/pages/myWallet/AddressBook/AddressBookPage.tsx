@@ -14,7 +14,7 @@ export default function AddressBookPage() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box sx={{ padding: isMobileMode ? "0" : "25px" }}>

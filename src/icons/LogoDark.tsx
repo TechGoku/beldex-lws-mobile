@@ -45,8 +45,8 @@ const LogoDark = (props: any) => {
         />
         <path
           d="M50.7327 45.3523C50.7327 52.7145 44.7764 58.6775 37.4351 58.6775C30.0938 58.6775 24.1374 52.7145 24.1374 45.3523C24.1374 37.9902 30.0938 32.0272 37.4351 32.0272C44.7763 32.0272 50.7327 37.9902 50.7327 45.3523Z"
-          fill="#1C1C26"
-          stroke="#1C1C26"
+          fill="#0a0a0a"
+          stroke="#0a0a0a"
           strokeWidth="3.27"
           strokeMiterlimit="10"
         />
@@ -102,7 +102,7 @@ const LogoDark = (props: any) => {
             y2="37.125"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#31A036" />
+            <stop stopColor="#2fa236" />
             <stop offset="1" stopColor="#45D94C" />
           </linearGradient>
           <linearGradient
@@ -113,7 +113,7 @@ const LogoDark = (props: any) => {
             y2="37.125"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#31A036" />
+            <stop stopColor="#2fa236" />
             <stop offset="0.24" stopColor="#33A638" />
             <stop offset="0.54" stopColor="#39B63F" />
             <stop offset="0.89" stopColor="#42D149" />
@@ -127,9 +127,9 @@ const LogoDark = (props: any) => {
             y2="26.0016"
             gradientUnits="userSpaceOnUse"
           >
-            <stop stopColor="#51F859" />
+            <stop stopColor="#3ec745" />
             <stop offset="0.51" stopColor="#231F20" />
-            <stop offset="1" stopColor="#51F859" />
+            <stop offset="1" stopColor="#3ec745" />
           </linearGradient>
           <linearGradient
             id="paint6_linear_1198_991"

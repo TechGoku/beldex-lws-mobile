@@ -91,10 +91,11 @@ export default function Wallets() {
     left: "50%",
     transform: "translate(-50%, -50%)",
     width: isMobileMode ? 320 : 420,
+    maxWidth: "92vw",
     bgcolor: theme.palette.background.paper,
     boxShadow: 24,
     p: 4,
-    borderRadius: "22px",
+    borderRadius: "0px",
   };
 
   return (
@@ -103,7 +104,7 @@ export default function Wallets() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box sx={{ padding: isMobileMode ? "0" : "25px" }}>
@@ -117,12 +118,12 @@ export default function Wallets() {
 
         <Box sx={{ maxWidth: 620, mx: "auto", mt: 3, px: isMobileMode ? 2 : 0 }}>
           <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Typography sx={{ fontWeight: 700, fontSize: "1.3rem" }}>Wallets</Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: "1.2rem" }}>Wallets</Typography>
             <Button
               variant="contained"
               color="primary"
               startIcon={<AddIcon />}
-              sx={{ borderRadius: "10px", color: "#fff" }}
+              sx={{ borderRadius: "0px", }}
               onClick={() => {
                 // Enter "add wallet" mode so the login screens are reachable
                 // even though a wallet is already open.
@@ -139,12 +140,12 @@ export default function Wallets() {
               <Box
                 sx={{
                   textAlign: "center",
-                  border: `2px solid ${theme.palette.mode === "dark" ? "#454556" : "#D7D7D7"}`,
-                  borderRadius: "12px",
+                  border: `2px solid ${theme.palette.mode === "dark" ? "#333333" : "#D7D7D7"}`,
+                  borderRadius: "0px",
                   p: 4,
                 }}
               >
-                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: "2.5rem", color: "#8787A8" }} />
+                <AccountBalanceWalletOutlinedIcon sx={{ fontSize: "2.5rem", color: "#8a8a8a" }} />
                 <Typography sx={{ fontWeight: 600, mt: 1 }}>No wallets saved yet</Typography>
               </Box>
             ) : (
@@ -160,32 +161,32 @@ export default function Wallets() {
                       justifyContent: "space-between",
                       p: 2,
                       mt: 1.5,
-                      borderRadius: "16px",
+                      borderRadius: "0px",
                       cursor: "pointer",
                       background: active
                         ? theme.palette.mode === "dark" ? "#1E3A24" : "#E8F7EA"
-                        : theme.palette.mode === "dark" ? "#24242F" : "#FCFCFC",
-                      border: active ? "1.5px solid #00D030" : "1.5px solid transparent",
+                        : theme.palette.mode === "dark" ? "#161616" : "#FFFFFF",
+                      border: active ? "1.5px solid #3ec745" : "1.5px solid transparent",
                     }}
                   >
                     <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 0 }}>
-                      <AccountBalanceWalletOutlinedIcon sx={{ color: active ? "#00D030" : "#8787A8" }} />
+                      <AccountBalanceWalletOutlinedIcon sx={{ color: active ? "#3ec745" : "#8a8a8a" }} />
                       <Box sx={{ minWidth: 0 }}>
                         <Typography sx={{ fontWeight: 600 }}>{w.name}</Typography>
-                        <Typography sx={{ color: "#8787A8", fontSize: "0.8rem" }}>
+                        <Typography sx={{ color: "#8a8a8a", fontSize: "0.8rem" }}>
                           {truncate(w.address_string)}
                         </Typography>
                       </Box>
                     </Box>
                     <Box display="flex" alignItems="center">
-                      {active && <CheckCircleIcon sx={{ color: "#00D030", mr: 0.5 }} />}
+                      {active && <CheckCircleIcon sx={{ color: "#3ec745", mr: 0.5 }} />}
                       <IconButton
                         onClick={(e) => {
                           e.stopPropagation();
                           setConfirmDelete(w);
                         }}
                       >
-                        <DeleteOutlineIcon sx={{ color: "#FC2727", fontSize: "1.2rem" }} />
+                        <DeleteOutlineIcon sx={{ color: "#ff5c5c", fontSize: "1.2rem" }} />
                       </IconButton>
                     </Box>
                   </Box>
@@ -205,18 +206,18 @@ export default function Wallets() {
             This only removes it from this device. Make sure you have its recovery
             seed saved — you'll need it to restore this wallet.
           </Typography>
-          <Box display="flex" justifyContent="center" gap={2} mt={3}>
-            <Button variant="contained" color="secondary" sx={{ borderRadius: "10px", width: 130, color: theme.palette.text.primary }} onClick={() => setConfirmDelete(null)}>
+          <Box display="flex" justifyContent="center" flexWrap="wrap" gap={2} mt={3}>
+            <Button variant="contained" color="secondary" sx={{ borderRadius: "0px", width: 130, color: theme.palette.text.primary }} onClick={() => setConfirmDelete(null)}>
               Cancel
             </Button>
-            <Button variant="contained" color="error" sx={{ borderRadius: "10px", width: 130, color: "#fff" }} onClick={handleDelete}>
+            <Button variant="contained" color="error" sx={{ borderRadius: "0px", width: 130 }} onClick={handleDelete}>
               Remove
             </Button>
           </Box>
         </Box>
       </Modal>
 
-      <Backdrop open={busy} sx={{ zIndex: (t) => t.zIndex.modal + 5, color: "#00D030" }}>
+      <Backdrop open={busy} sx={{ zIndex: (t) => t.zIndex.modal + 5, color: "#3ec745" }}>
         <CircularProgress color="inherit" />
       </Backdrop>
 

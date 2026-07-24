@@ -20,14 +20,14 @@ export default function SignUp() {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box
         className="SignUp"
         sx={{
           padding: isMobileMode ? "25px 0" : '30px 45px',
-          height: 'calc(100vh - 110px)',
+          height: 'calc(100dvh - 110px)',
           overflow: 'auto',
         }}
       >
@@ -35,12 +35,12 @@ export default function SignUp() {
           sx={{
             padding: isMobileMode ? "15px" : "20px 50px",
             backgroundColor: (theme) => theme.palette.primary.light,
-            borderRadius: "20px",
+            borderRadius: "0px",
           }}
         >
           <Typography
             textAlign="center"
-            sx={{ color: theme.palette.text.primary, fontWeight: "bold", fontSize: "1.5rem" }}
+            sx={{ color: theme.palette.text.primary, fontWeight: "bold", fontSize: "1.2rem" }}
           >
             Create New Wallet
           </Typography>
@@ -56,8 +56,8 @@ export default function SignUp() {
                 sx={{
                   width: "10px",
                   height: "10px",
-                  backgroundColor: "#19AD1C",
-                  borderRadius: "20px",
+                  backgroundColor: "#2fa236",
+                  borderRadius: "0px",
                   marginTop: "6px",
                   marginRight: "15px",
                 }}
@@ -82,8 +82,8 @@ export default function SignUp() {
                 sx={{
                   width: "10px",
                   height: "10px",
-                  backgroundColor: "#19AD1C",
-                  borderRadius: "20px",
+                  backgroundColor: "#2fa236",
+                  borderRadius: "0px",
                   marginTop: "6px",
                   marginRight: "15px",
                 }}
@@ -111,8 +111,8 @@ export default function SignUp() {
                 sx={{
                   width: "10px",
                   height: "10px",
-                  backgroundColor: "#19AD1C",
-                  borderRadius: "20px",
+                  backgroundColor: "#2fa236",
+                  borderRadius: "0px",
                   marginTop: "6px",
                   marginRight: "15px",
                 }}
@@ -140,8 +140,8 @@ export default function SignUp() {
                 sx={{
                   width: "10px",
                   height: "10px",
-                  backgroundColor: "#19AD1C",
-                  borderRadius: "20px",
+                  backgroundColor: "#2fa236",
+                  borderRadius: "0px",
                   marginTop: "6px",
                   marginRight: "15px",
                 }}
@@ -169,8 +169,8 @@ export default function SignUp() {
                 sx={{
                   width: "10px",
                   height: "10px",
-                  backgroundColor: "#19AD1C",
-                  borderRadius: "20px",
+                  backgroundColor: "#2fa236",
+                  borderRadius: "0px",
                   marginTop: "6px",
                   marginRight: "15px",
                 }}
@@ -220,7 +220,7 @@ export default function SignUp() {
               onClick={() => navigate('/')}
               sx={{
                 width: isMobileMode ? "70%" : '150px',
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 fontWeight: 600,
                 height: "50px",
                 marginTop: "10px",
@@ -237,10 +237,9 @@ export default function SignUp() {
               onClick={() => navigate('/displaySeed')}
               sx={{
                 fontWeight: 600,
-                color: "white",
                 height: "50px",
                 width: isMobileMode ? "70%" : "150px",
-                borderRadius: isMobileMode ? "40px" : "10px",
+                borderRadius: "0px",
                 marginTop: "10px",
               }}
             >

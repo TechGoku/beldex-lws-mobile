@@ -26,16 +26,19 @@ export default function About(props: any) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Typography
         component="h2"
         className="header"
         textAlign={"center"}
-        fontSize={22}
         mb={4}
-        sx={{ color: theme.palette.text.primary, fontWeight: 700 }}
+        sx={{
+          color: theme.palette.text.primary,
+          fontWeight: 700,
+          fontSize: isMobileMode ? "1.15rem" : "1.375rem",
+        }}
       >
         About Beldex Wallet
       </Typography>
@@ -57,15 +60,18 @@ export default function About(props: any) {
 
       <Typography
         component="h2"
-        fontSize={22}
-        sx={{ color: theme.palette.text.primary, fontWeight: 700 }}
+        sx={{
+          color: theme.palette.text.primary,
+          fontWeight: 700,
+          fontSize: isMobileMode ? "1.15rem" : "1.375rem",
+        }}
       >
         Beldex Wallet
       </Typography>
       <Typography
         sx={{
           color: theme.palette.text.secondary,
-          fontSize: 12,
+          fontSize: "0.75rem",
         }}
       >
         {process.env.WEB_VERSION}
@@ -97,9 +103,12 @@ export default function About(props: any) {
           sx={{
             fontWeight: 600,
             // marginRight: "10px",
-            width: "250px",
+            // width caps at the design size but shrinks to fit narrow (<=320px)
+            // screens so the CTA never overflows its container.
+            width: "100%",
+            maxWidth: "250px",
             height: "45px",
-            borderRadius: isMobileMode ? "40px" : "20px",
+            borderRadius: "0px",
           }}
           onClick={() => props.setIsPreference()}
         >

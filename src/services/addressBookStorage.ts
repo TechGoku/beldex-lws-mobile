@@ -7,6 +7,9 @@ export interface SavedAddress {
   label: string;
   address: string;
   paymentId?: string;
+  // Set when the address was stored by resolving a BNS name — kept so the
+  // contact list can show where the address came from.
+  bnsName?: string;
   createdAt: number;
 }
 

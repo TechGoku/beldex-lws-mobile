@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
   Button,
   Modal,
-  Switch,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -15,14 +14,12 @@ import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useNavigate } from "react-router-dom";
 import About from "./About";
 import { useAppDispatch } from "../../stores/hooks";
 import { setUserLogout } from "../../stores/features/seedDetailSlice";
-import { MUIWrapperContext } from "../../theme/MUIWrapper";
 
 interface RowProps {
   icon: React.ReactNode;
@@ -37,15 +34,9 @@ const Settings = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
-  const muiUtils: any = React.useContext(MUIWrapperContext);
 
   const [showAbout, setShowAbout] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const [isDark, setIsDark] = useState(theme.palette.mode === "dark");
-
-  useEffect(() => {
-    setIsDark(theme.palette.mode === "dark");
-  }, [theme.palette.mode]);
 
   const logout = () => {
     dispatch(setUserLogout());
@@ -71,7 +62,7 @@ const Settings = () => {
           : {},
       }}
     >
-      <Box sx={{ color: "#00D030", display: "flex" }}>{icon}</Box>
+      <Box sx={{ color: "#3ec745", display: "flex" }}>{icon}</Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{ fontWeight: 600 }}>{title}</Typography>
         {subtitle && (
@@ -80,13 +71,13 @@ const Settings = () => {
           </Typography>
         )}
       </Box>
-      {right !== undefined ? right : onClick && <ChevronRightIcon sx={{ color: "#8787A8" }} />}
+      {right !== undefined ? right : onClick && <ChevronRightIcon sx={{ color: "#8a8a8a" }} />}
     </Box>
   );
 
   const sectionSx = {
-    background: theme.palette.mode === "dark" ? "#24242F" : "#FCFCFC",
-    borderRadius: "16px",
+    background: theme.palette.mode === "dark" ? "#161616" : "#FFFFFF",
+    borderRadius: "0px",
     overflow: "hidden",
     mt: 1.5,
   };
@@ -107,7 +98,7 @@ const Settings = () => {
       sx={{
         minWidth: isMobileMode ? "100%" : "calc(100% - 250px)",
         background: isMobileMode ? "unset" : theme.palette.background.paper,
-        borderRadius: "25px",
+        borderRadius: "0px",
       }}
     >
       <Box sx={{ padding: isMobileMode ? "0" : "25px" }}>
@@ -125,7 +116,7 @@ const Settings = () => {
           </Box>
         ) : (
           <Box sx={{ maxWidth: 620, mx: "auto", mt: 2, px: isMobileMode ? 2 : 0, pb: 4 }}>
-            <Typography sx={{ fontWeight: 700, fontSize: "1.5rem" }}>Settings</Typography>
+            <Typography sx={{ fontWeight: 700, fontSize: "1.2rem" }}>Settings</Typography>
 
             <Typography sx={sectionLabelSx}>Wallet</Typography>
             <Box sx={sectionSx}>
@@ -172,16 +163,6 @@ const Settings = () => {
             <Typography sx={sectionLabelSx}>App</Typography>
             <Box sx={sectionSx}>
               <Row
-                icon={<DarkModeOutlinedIcon />}
-                title="Dark Mode"
-                right={
-                  <Switch
-                    checked={isDark}
-                    onChange={() => muiUtils.toggleColorMode()}
-                  />
-                }
-              />
-              <Row
                 icon={<InfoOutlinedIcon />}
                 title="About Beldex Wallet"
                 subtitle={`Version ${process.env.APP_VERSION || ""}`}
@@ -197,8 +178,8 @@ const Settings = () => {
               sx={{
                 mt: 4,
                 height: 50,
-                borderRadius: "14px",
-                color: "#FF4444",
+                borderRadius: "0px",
+                color: "#ff5c5c",
                 fontWeight: 600,
               }}
               onClick={() => setLogoutOpen(true)}
@@ -217,10 +198,11 @@ const Settings = () => {
             left: "50%",
             transform: "translate(-50%, -50%)",
             width: isMobileMode ? 320 : 440,
+            maxWidth: "92vw",
             bgcolor: theme.palette.background.paper,
             boxShadow: 24,
             p: 4,
-            borderRadius: "22px",
+            borderRadius: "0px",
           }}
         >
           <Typography textAlign="center" sx={{ fontWeight: 700, fontSize: "1.2rem" }}>
@@ -230,11 +212,11 @@ const Settings = () => {
             This signs out of the active wallet. Your saved wallets stay on this
             device — you can switch back anytime.
           </Typography>
-          <Box display="flex" justifyContent="center" gap={2} mt={3}>
+          <Box display="flex" justifyContent="center" flexWrap="wrap" gap={2} mt={3}>
             <Button
               variant="contained"
               color="secondary"
-              sx={{ borderRadius: "10px", width: 130, color: theme.palette.text.primary }}
+              sx={{ borderRadius: "0px", width: 130, color: theme.palette.text.primary }}
               onClick={() => setLogoutOpen(false)}
             >
               Cancel
@@ -242,7 +224,7 @@ const Settings = () => {
             <Button
               variant="contained"
               color="error"
-              sx={{ borderRadius: "10px", width: 130, color: "#fff" }}
+              sx={{ borderRadius: "0px", width: 130 }}
               onClick={logout}
             >
               Log out
