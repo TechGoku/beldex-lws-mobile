@@ -25,7 +25,24 @@ function readServerUrlFromEnvFile() {
   return 'lwsapi.beldex.dev';
 }
 
-const devProxyTarget = `https://${readServerUrlFromEnvFile()}`;
+// Honour an explicit scheme in SERVER_URL so a plain-HTTP endpoint (a local or
+// self-hosted LWS without TLS) can be proxied during development. Read the raw
+// value rather than readServerUrlFromEnvFile(), which strips the scheme by
+// design. Bare hosts still default to https, so existing .env files behave
+// exactly as before.
+function readRawServerUrlFromEnvFile() {
+  for (const envFile of ['.env', '.env.defaults']) {
+    const envPath = path.join(__dirname, envFile);
+    if (!fs.existsSync(envPath)) continue;
+    const m = fs.readFileSync(envPath, 'utf8').match(/^SERVER_URL=(.+)$/m);
+    if (m) return m[1].trim().replace(/\/+$/, '');
+  }
+  return '';
+}
+const devProxyRaw = readRawServerUrlFromEnvFile();
+const devProxyTarget = /^https?:\/\//i.test(devProxyRaw)
+  ? devProxyRaw
+  : `https://${readServerUrlFromEnvFile()}`;
 
 module.exports = {
   mode: 'development',

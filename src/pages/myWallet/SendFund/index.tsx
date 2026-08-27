@@ -66,6 +66,35 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   const [registrationString, setRegistrationString] = useState("");
   const [registrationToggle, setRegistrationToggle] = useState(false);
   const isRegister = registrationToggle && registrationString.trim() !== "";
+  // HF22 private tokens. A third mode alongside "Send BDX" and "Register
+  // Masternode": it registers a new token, which mints the initial supply to
+  // this wallet and locks collateral rather than paying it away.
+  const [tokenToggle, setTokenToggle] = useState(false);
+  const [tokenTicker, setTokenTicker] = useState("");
+  const [tokenFullName, setTokenFullName] = useState("");
+  const [tokenDecimals, setTokenDecimals] = useState("8");
+  const [tokenSupply, setTokenSupply] = useState("");
+  const [tokenMaxSupply, setTokenMaxSupply] = useState("");
+  const [errToken, setErrToken] = useState("");
+  // Protocol constants (collateral, lock period, descriptor limits) come from
+  // the bridge rather than being duplicated here, so they cannot drift out of
+  // step with consensus. Null until the bridge answers.
+  const [tokenInfo, setTokenInfo] = useState<any>(null);
+  const [registeredTokenId, setRegisteredTokenId] = useState("");
+  // Ask the bridge once for the protocol's registration costs and limits.
+  // Guarded because an older bridge build does not export this call; the form
+  // then falls back to its built-in limits and simply cannot show the
+  // collateral figure.
+  React.useEffect(() => {
+    try {
+      const fn = coreBridgeInstance?.beldex_utils?.token_registration_info;
+      if (typeof fn === "function") {
+        setTokenInfo(JSON.parse(fn()));
+      }
+    } catch (e) {
+      console.warn("token_registration_info unavailable:", e);
+    }
+  }, [coreBridgeInstance]);
   // const exchangeCurrencyList = {
   //   USD: "USD",
   //   AUD: "AUD",
@@ -326,6 +355,43 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     //   return
     // }
 
+    if (tokenToggle) {
+      const limits = tokenInfo || {};
+      const maxTicker = Number(limits.max_ticker_length || 14);
+      const maxName = Number(limits.max_full_name_length || 400);
+      const maxDp = Number(limits.max_decimal_point || 18);
+      if (!/^[A-Za-z0-9]{1,14}$/.test(tokenTicker.trim()) || tokenTicker.trim().length > maxTicker) {
+        setErrToken(`Ticker must be 1-${maxTicker} letters or digits`);
+        handleShowToastMsg(`Ticker must be 1-${maxTicker} letters or digits`, false);
+        return;
+      }
+      if (tokenFullName.length > maxName) {
+        setErrToken(`Name must be at most ${maxName} characters`);
+        handleShowToastMsg(`Name must be at most ${maxName} characters`, false);
+        return;
+      }
+      const dp = Number(tokenDecimals);
+      if (!Number.isInteger(dp) || dp < 0 || dp > maxDp) {
+        setErrToken(`Decimals must be a whole number between 0 and ${maxDp}`);
+        handleShowToastMsg(`Decimals must be between 0 and ${maxDp}`, false);
+        return;
+      }
+      if (!tokenMaxSupply.trim() || Number(tokenMaxSupply) <= 0) {
+        setErrToken("Max supply is required");
+        handleShowToastMsg("Max supply is required", false);
+        return;
+      }
+      if (Number(tokenSupply || 0) > Number(tokenMaxSupply)) {
+        setErrToken("Initial supply cannot exceed max supply");
+        handleShowToastMsg("Initial supply cannot exceed max supply", false);
+        return;
+      }
+      setErrToken("");
+      handleOpen();
+      setTxnStatus("confirmation");
+      return;
+    }
+
     if (registrationToggle) {
       if (!registrationString.trim()) {
         setErrRegistration("Registration string is required");
@@ -465,6 +531,21 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     let args: any = {
       registration_string: registrationString,
       isRegister: isRegister,
+      // HF22: registering a token supplies no destinations -- they are derived
+      // from the descriptor and all pay back to this wallet. The bridge
+      // ignores both fields unless is_deploy_token is set, so an ordinary send
+      // is unaffected.
+      is_deploy_token: tokenToggle,
+      token_descriptor: tokenToggle
+        ? {
+            ticker: tokenTicker.trim(),
+            full_name: tokenFullName.trim(),
+            meta_info: "",
+            decimal_point: tokenDecimals,
+            total_max_supply: tokenMaxSupply,
+            current_supply: tokenSupply || "0",
+          }
+        : undefined,
       fromWallet_didFailToInitialize: false,
       fromWallet_didFailToBoot: false,
       fromWallet_needsImport: false,
@@ -522,6 +603,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     args.success_fn = (params: any) => {
       console.log("success_fn ::", params);
       setTxnStatus("success");
+      // HF22: a registration is the only place the token id appears. It is
+      // derived from the descriptor rather than chosen, so if it is not kept
+      // here the user has no way to recover it.
+      if (params.token_id) {
+        setRegisteredTokenId(params.token_id);
+        handleShowToastMsg(`Token registered: ${params.token_id}`, true);
+      }
       //
       const total_sent__JSBigInt: any = BigInt("" + params.total_sent);
       const total_sent__atomicUnitString = total_sent__JSBigInt.toString();
@@ -584,6 +672,76 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   };
 
 
+  // Load a token descriptor from a JSON file, using the same schema the CLI's
+  // deploy_new_token takes, so a spec written for the terminal works here
+  // unchanged:
+  //   { "ticker", "full_name", "decimal_point", "total_max_supply",
+  //     "current_supply", "meta_info", "version", "owner" }
+  //
+  // The CLI stores supplies as atomic uint64 while this form works in
+  // human-readable units (the bridge re-applies the scale), so they are
+  // converted on the way in. `owner` is deliberately ignored: the bridge always
+  // sets the owner to this wallet's spend key, and a file naming someone else
+  // would silently produce a token this wallet could never mint from.
+  const atomicToDisplay = (raw: any, decimals: number): string => {
+    let v: bigint;
+    try {
+      v = BigInt(String(raw).trim());
+    } catch {
+      return "";
+    }
+    if (decimals <= 0) return v.toString();
+    // Built from a string rather than 10n ** BigInt(decimals): the project's
+    // TS target predates ES2016, where the exponent operator is not allowed on
+    // bigint.
+    const scale = BigInt("1" + "0".repeat(decimals));
+    const whole = v / scale;
+    const frac = (v % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
+    return frac ? `${whole}.${frac}` : whole.toString();
+  };
+
+  const loadTokenDescriptorFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onerror = () => {
+      setErrToken("Could not read that file");
+      handleShowToastMsg("Could not read that file", false);
+    };
+    reader.onload = () => {
+      let spec: any;
+      try {
+        spec = JSON.parse(String(reader.result));
+      } catch (e) {
+        setErrToken("That file is not valid JSON");
+        handleShowToastMsg("That file is not valid JSON", false);
+        return;
+      }
+      if (typeof spec !== "object" || spec === null) {
+        setErrToken("Token spec must be a JSON object");
+        handleShowToastMsg("Token spec must be a JSON object", false);
+        return;
+      }
+      const dp = spec.decimal_point !== undefined ? Number(spec.decimal_point) : 8;
+      if (!Number.isInteger(dp) || dp < 0 || dp > 18) {
+        setErrToken("decimal_point must be a whole number between 0 and 18");
+        handleShowToastMsg("decimal_point must be between 0 and 18", false);
+        return;
+      }
+      setTokenDecimals(String(dp));
+      if (spec.ticker !== undefined) setTokenTicker(String(spec.ticker));
+      if (spec.full_name !== undefined) setTokenFullName(String(spec.full_name));
+      if (spec.total_max_supply !== undefined)
+        setTokenMaxSupply(atomicToDisplay(spec.total_max_supply, dp));
+      if (spec.current_supply !== undefined)
+        setTokenSupply(atomicToDisplay(spec.current_supply, dp));
+      if (spec.owner !== undefined) {
+        handleShowToastMsg("Ignoring 'owner': the registering wallet is always the owner", true);
+      }
+      setErrToken("");
+      handleShowToastMsg("Token spec loaded", true);
+    };
+    reader.readAsText(file);
+  };
+
   const clearStates = () => {
     setPriority(5);
     setToAddress("");
@@ -596,6 +754,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     setRegistrationString("");
     setRegistrationToggle(false);
     setErrRegistration("");
+    setTokenToggle(false);
+    setTokenTicker("");
+    setTokenFullName("");
+    setTokenDecimals("8");
+    setTokenSupply("");
+    setTokenMaxSupply("");
+    setErrToken("");
   }
 
   const PaymentSuccessDialog = () => {
@@ -700,6 +865,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           }}
           onClick={() => {
             setRegistrationToggle(false);
+            setTokenToggle(false);
             setPriority(5);
           }}
         >
@@ -726,12 +892,121 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           }}
           onClick={() => {
             setRegistrationToggle(true);
+            setTokenToggle(false);
             setPriority(1);
           }}
         >
           Register Masternode
         </Button>
+        <Button
+          fullWidth
+          sx={{
+            height: "100%",
+            minWidth: 0,
+            borderRadius: "0px",
+            backgroundColor: tokenToggle ? (theme.palette.mode === "dark" ? "#222222" : "#FFFFFF") : "transparent",
+            color: tokenToggle ? theme.palette.text.primary : "#8a8a8a",
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: rf(12),
+            lineHeight: 1.1,
+            transition: "all 0.3s ease",
+            "&:hover": {
+              backgroundColor: tokenToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
+            },
+            padding: '4px',
+            whiteSpace: 'nowrap',
+          }}
+          onClick={() => {
+            setRegistrationToggle(false);
+            setTokenToggle(true);
+            // Registration cannot use flash priority: flash sets its own burn,
+            // which would overwrite the protocol's.
+            setPriority(1);
+          }}
+        >
+          Register Token
+        </Button>
       </Box>
+      {tokenToggle && (
+        <Box mt={2} sx={{ width: "72%", mx: "auto" }}>
+          <Box display="flex" flexDirection="row" justifyContent="space-between" alignItems="center" mb={1}>
+            <Typography sx={{ color: theme.palette.text.primary, fontWeight: 600 }}>
+              New token
+            </Typography>
+            {/* Same JSON spec the CLI's deploy_new_token takes, so a file
+                written for the terminal can be used here as-is. */}
+            <Button
+              component="label"
+              size="small"
+              sx={{ textTransform: "none", color: theme.palette.text.secondary, fontSize: rf(11) }}
+            >
+              Load JSON file
+              <input
+                hidden
+                type="file"
+                accept="application/json,.json"
+                onChange={(e: any) => {
+                  const f = e.target.files && e.target.files[0];
+                  if (f) loadTokenDescriptorFile(f);
+                  // Reset so picking the same file twice still fires onChange.
+                  e.target.value = "";
+                }}
+              />
+            </Button>
+          </Box>
+          {tokenInfo && (
+            <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mb: 1 }}>
+              Registering locks {(Number(tokenInfo.collateral_amount) / 1e9).toLocaleString()} BDX
+              for {Number(tokenInfo.collateral_lock_blocks).toLocaleString()} blocks. The collateral
+              is returned when the lock expires; the network fee is separate.
+            </Typography>
+          )}
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Ticker</Typography>
+          <Box sx={{ backgroundColor: theme.palette.mode === "dark" ? "#222222" : "#F9F9F9",
+                     borderRadius: "8px", px: 1.5 }}>
+            <Input placeholder={"e.g. DEMO"} disableUnderline={true}
+              sx={{ width: "100%", height: "44px", color: (t: any) => t.palette.text.secondary }}
+              value={tokenTicker} onChange={(e: any) => setTokenTicker(e.target.value)} />
+          </Box>
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Full name</Typography>
+          <Box sx={{ backgroundColor: theme.palette.mode === "dark" ? "#222222" : "#F9F9F9",
+                     borderRadius: "8px", px: 1.5 }}>
+            <Input placeholder={"e.g. Demo Token"} disableUnderline={true}
+              sx={{ width: "100%", height: "44px", color: (t: any) => t.palette.text.secondary }}
+              value={tokenFullName} onChange={(e: any) => setTokenFullName(e.target.value)} />
+          </Box>
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Decimals</Typography>
+          <Box sx={{ backgroundColor: theme.palette.mode === "dark" ? "#222222" : "#F9F9F9",
+                     borderRadius: "8px", px: 1.5 }}>
+            <Input placeholder={"8"} disableUnderline={true}
+              sx={{ width: "100%", height: "44px", color: (t: any) => t.palette.text.secondary }}
+              value={tokenDecimals} onChange={(e: any) => setTokenDecimals(e.target.value)} />
+          </Box>
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Initial supply</Typography>
+          <Box sx={{ backgroundColor: theme.palette.mode === "dark" ? "#222222" : "#F9F9F9",
+                     borderRadius: "8px", px: 1.5 }}>
+            <Input placeholder={"0"} disableUnderline={true}
+              sx={{ width: "100%", height: "44px", color: (t: any) => t.palette.text.secondary }}
+              value={tokenSupply} onChange={(e: any) => setTokenSupply(e.target.value)} />
+          </Box>
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Max supply</Typography>
+          <Box sx={{ backgroundColor: theme.palette.mode === "dark" ? "#222222" : "#F9F9F9",
+                     borderRadius: "8px", px: 1.5 }}>
+            <Input placeholder={"1000000"} disableUnderline={true}
+              sx={{ width: "100%", height: "44px", color: (t: any) => t.palette.text.secondary }}
+              value={tokenMaxSupply} onChange={(e: any) => setTokenMaxSupply(e.target.value)} />
+          </Box>
+          {errToken && (
+            <Typography sx={{ color: "#ff5c5c", fontSize: rf(11) }}>{errToken}</Typography>
+          )}
+          {registeredTokenId && (
+            <Typography sx={{ color: theme.palette.text.primary, fontSize: rf(11), wordBreak: "break-all", mt: 1 }}>
+              Token id: {registeredTokenId}
+            </Typography>
+          )}
+        </Box>
+      )}
       <Box
         mt={2}
         display="flex"
@@ -762,7 +1037,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         <span style={{ color: "#3ec745" }}>BDX</span>
       </Typography>
       <Box mt={1.5} mb={1.5} sx={{ height: "0.2px", backgroundColor: "#8a8a8a" }} />
-      {!registrationToggle ? (
+      {(!registrationToggle && !tokenToggle) ? (
         <>
           <Box
             display="flex"
@@ -861,7 +1136,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           </Typography>
         </Box>
       )}
-      {!registrationToggle ? (
+      {(!registrationToggle && !tokenToggle) ? (
         <>
           <Box
             display="flex"
@@ -1060,7 +1335,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       {/* Extension-style priority: a single ⚡ Flash checkbox (5 = flash,
           1 = normal per wallet2.h tx_priority). Masternode registration is
           always normal priority, so no control is shown on that tab. */}
-      {!registrationToggle && (
+      {!registrationToggle && !tokenToggle && (
         <Box
           component="label"
           display="flex"
@@ -1128,7 +1403,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           onClick={() => sendFundFieldValidation()}
         >
           <CallMadeIcon sx={{ marginRight: '7px' }} />
-          {registrationToggle ? "Register" : "Send"}
+          {registrationToggle || tokenToggle ? "Register" : "Send"}
         </Button>
       </Box>
 
@@ -1154,7 +1429,36 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             >
               Review Transaction
             </Typography>
-            {isRegister ? (
+            {tokenToggle ? (
+              <>
+                <Typography mt={2} sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                  New token
+                </Typography>
+                <Box
+                  sx={{
+                    mt: 1,
+                    padding: "12px",
+                    border: `1px dashed ${theme.palette.primary.main}`,
+                    backgroundColor: theme.palette.mode === "dark" ? "#0d0d0d" : "#fbfbfb",
+                    fontSize: rf(12),
+                  }}
+                >
+                  <Typography sx={{ color: theme.palette.primary.main, fontSize: rf(13), fontWeight: 600 }}>
+                    {tokenTicker} — {tokenFullName || "(no name)"}
+                  </Typography>
+                  <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(12), mt: 0.5 }}>
+                    Initial supply: {tokenSupply || "0"} · Max supply: {tokenMaxSupply} · Decimals: {tokenDecimals}
+                  </Typography>
+                </Box>
+                {tokenInfo && (
+                  <Typography mt={2} sx={{ color: "#c62", fontSize: rf(12) }}>
+                    This locks {(Number(tokenInfo.collateral_amount) / 1e9).toLocaleString()} BDX for{" "}
+                    {Number(tokenInfo.collateral_lock_blocks).toLocaleString()} blocks, plus the network fee.
+                    The collateral returns to this wallet when the lock expires.
+                  </Typography>
+                )}
+              </>
+            ) : isRegister ? (
               <>
                 <Typography mt={2} sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
                   Registration string
