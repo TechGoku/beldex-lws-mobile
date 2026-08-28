@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The wallet is designed to point at a self-hosted Light Wallet Service, and
+  those are routinely plain HTTP: a LAN box, a local private testnet, or a
+  server without TLS. Android denies cleartext by default from API 28, so
+  without this every such endpoint fails before a packet leaves the device
+  with "Cleartext HTTP traffic to <host> not permitted", which reads like a
+  network fault but is not one.
+
+  The Settings / Server screen already warns, in the UI, that a plain HTTP
+  endpoint sends the address and view key unencrypted and should only be used
+  on a trusted LAN or behind a proxy. This policy makes the app honour that
+  choice rather than silently refusing it. HTTPS endpoints are unaffected and
+  still validate against the system trust store.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
