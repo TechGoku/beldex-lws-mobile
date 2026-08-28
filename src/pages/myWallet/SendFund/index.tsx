@@ -87,9 +87,13 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   // collateral figure.
   React.useEffect(() => {
     try {
-      const fn = coreBridgeInstance?.beldex_utils?.token_registration_info;
-      if (typeof fn === "function") {
-        setTokenInfo(JSON.parse(fn()));
+      // Call it as a method. Pulling the function off into a local and invoking
+      // it bare leaves `this` undefined, and the bridge reads `this.Module` --
+      // so every call threw and the form silently lost the collateral figure.
+      const utils = coreBridgeInstance?.beldex_utils;
+      if (utils && typeof utils.token_registration_info === "function") {
+        const raw = utils.token_registration_info();
+        setTokenInfo(typeof raw === "string" ? JSON.parse(raw) : raw);
       }
     } catch (e) {
       console.warn("token_registration_info unavailable:", e);
@@ -840,7 +844,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           padding: "4px",
           gap: "4px",
           marginTop: isMobileMode ? "6px" : "16px",
-          height: { xs: 44, sm: 50 },
+          height: { xs: 52, sm: 50 },
           alignItems: "stretch",
         }}
       >
@@ -854,14 +858,14 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             color: !registrationToggle ? theme.palette.text.primary : "#8a8a8a",
             textTransform: "none",
             fontWeight: 600,
-            fontSize: rf(12),
+            fontSize: { xs: rf(10), sm: rf(12) },
             lineHeight: 1.1,
             transition: "all 0.3s ease",
             "&:hover": {
               backgroundColor: !registrationToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
             },
             padding: '4px',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
           }}
           onClick={() => {
             setRegistrationToggle(false);
@@ -881,14 +885,14 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             color: registrationToggle ? theme.palette.text.primary : "#8a8a8a",
             textTransform: "none",
             fontWeight: 600,
-            fontSize: rf(12),
+            fontSize: { xs: rf(10), sm: rf(12) },
             lineHeight: 1.1,
             transition: "all 0.3s ease",
             "&:hover": {
               backgroundColor: registrationToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
             },
             padding: '4px',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
           }}
           onClick={() => {
             setRegistrationToggle(true);
@@ -908,14 +912,14 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             color: tokenToggle ? theme.palette.text.primary : "#8a8a8a",
             textTransform: "none",
             fontWeight: 600,
-            fontSize: rf(12),
+            fontSize: { xs: rf(10), sm: rf(12) },
             lineHeight: 1.1,
             transition: "all 0.3s ease",
             "&:hover": {
               backgroundColor: tokenToggle ? (theme.palette.mode === "dark" ? "#2a2a2a" : "#F9F9F9") : "transparent",
             },
             padding: '4px',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
           }}
           onClick={() => {
             setRegistrationToggle(false);
@@ -1276,7 +1280,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             </Typography>
           )}
         </>
-      ) : (
+      ) : registrationToggle ? (
         <>
           <Box
             display="flex"
@@ -1331,7 +1335,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             will submit it as a registration transaction.
           </Typography>
         </>
-      )}
+      ) : null}
       {/* Extension-style priority: a single ⚡ Flash checkbox (5 = flash,
           1 = normal per wallet2.h tx_priority). Masternode registration is
           always normal priority, so no control is shown on that tab. */}
