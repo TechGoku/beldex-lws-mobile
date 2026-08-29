@@ -73,6 +73,35 @@ Copy `.env.default` to `.env` and fill in the values described below, then rebui
 | `APP_VERSION` | App version string. |
 | `WEB_VERSION` | Version shown in the header. |
 
+#### Pointing the app at your own private testnet
+
+`SERVER_URL` resolves a bare host over https. To reach a light wallet server on
+your own machine, give it an explicit scheme and the machine's LAN IP — not
+`localhost`, which the phone resolves to itself:
+
+```
+SERVER_URL=http://192.168.1.20:8444
+NETTYPE=1
+```
+
+Start that server so it listens beyond loopback, and — if a browser build will
+also talk to it — so it answers CORS:
+
+```
+beldex-lws-daemon --network test \
+  --rest-server http://0.0.0.0:8444 --confirm-external-bind \
+  --access-control-origin '*' \
+  --db-path ... --daemon http://127.0.0.1:28081 --sub ipc://.../beldexd.sock
+```
+
+Both are runtime flags, not build settings, so they have to be passed every
+time. Phone and machine must be on the same network. Plain http is permitted on
+device by the app's network security config.
+
+The APK bakes `SERVER_URL` in at build time, so edit `.env` **before**
+`npm run build:prod`. It can also be changed at runtime in Settings → Server
+without rebuilding.
+
 ---
 
 ## Development
