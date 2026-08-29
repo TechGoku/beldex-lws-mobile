@@ -22,7 +22,7 @@ import { setTransactionhistory } from "../../../stores/features/seedDetailSlice"
 import Modal from "@mui/material/Modal";
 import SuccessTxnTickIconWhite from "../../../icons/SuccessTxnTickIconWhite";
 import SuccessTxnTickIconDark from "../../../icons/SuccessTxnTickIconDark";
-import { useAppDispatch } from "../../../stores/hooks";
+import { useAppDispatch, useAppSelector } from "../../../stores/hooks";
 import AddressBook from "../AddressBook";
 import { addSavedAddress } from "../../../stores/features/addressBookSlice";
 import { SavedAddress } from "../../../services/addressBookStorage";
@@ -32,8 +32,10 @@ import TxAuthGate from "../../../components/txAuthGate/TxAuthGate";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import { useNavigate } from "react-router-dom";
 import { copyToClipboard } from "../../../services/clipboard";
-import { recordRegisteredToken } from "../../../stores/features/tokensSlice";
-import { atomicToDisplay } from "../../../utils/tokenAmount";
+import { recordRegisteredToken, tokensSelector } from "../../../stores/features/tokensSlice";
+import { spendableBalance } from "../../../services/tokenApi";
+import { atomicToDisplay, groupDigits, shortenTokenId } from "../../../utils/tokenAmount";
+
 const JSBigInt = require("@bdxi/beldex-bigint").BigInteger;
 const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
 const beldex_config = require("@bdxi/beldex-config");
@@ -70,6 +72,30 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   const [manualPaymentId, setManualPaymentId] = useState("");
   const [estimtionFees, setEstimationFees] = useState("");
   const [registrationString, setRegistrationString] = useState("");
+  /* Which asset the Send tab is spending. "" is BDX; anything else is a
+     privacy token id. It drives the unit everywhere below - the amount field,
+     its validation, Max, the review dialog - because a token's scale is its
+     own and has nothing to do with BDX's 9 decimals. The fee is always BDX
+     regardless, so both units appear on the same screen. */
+  const [sendAsset, setSendAsset] = useState("");
+  const { balances: tokenBalances, chainInfo: tokenChainInfo } = useAppSelector(tokensSelector);
+
+  const heldAssets = React.useMemo(() => {
+    const list = Object.values(tokenBalances as any).map((b: any) => {
+      const info = (tokenChainInfo as any)[b.tokenId];
+      return {
+        id: b.tokenId,
+        ticker: info ? info.ticker : shortenTokenId(b.tokenId, 6, 4),
+        decimals: info ? info.decimalPoint : 0,
+        amount: atomicToDisplay(spendableBalance(b), info ? info.decimalPoint : 0),
+      };
+    });
+    return list.filter((t: any) => t.amount !== "" && t.amount !== "0");
+  }, [tokenBalances, tokenChainInfo]);
+
+  const selectedAsset = heldAssets.find((t: any) => t.id === sendAsset);
+  const isTokenSend = Boolean(selectedAsset);
+
   const [registrationToggle, setRegistrationToggle] = useState(false);
   const isRegister = registrationToggle && registrationString.trim() !== "";
   // HF22 private tokens. A third mode alongside "Send BDX" and "Register
@@ -438,17 +464,31 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       setErrAmount("Amount must be greater than zero");
       return;
     }
-    if (Number(amount) > walletDetails.unlocked_balance) {
-      // return ToastUtils.pushToastError('notEnoughBalance', 'Not enough unlocked balance');
-      // setErrAmount('Not enough unlocked balance')
-      setErrAmount("Not enough unlocked balance");
-      handleShowToastMsg("Not enough unlocked balance", false);
+    /* Balance checks run against whichever asset is selected. For a token the
+       comparison is against that token's balance in its own scale, and the
+       ceiling is the whole balance: the fee is BDX and does not come out of
+       it - unlike a BDX send, where the fee has to be left behind. */
+    const assetBalance = isTokenSend
+      ? Number(selectedAsset!.amount)
+      : Number(walletDetails.unlocked_balance);
+    const assetTicker = isTokenSend ? selectedAsset!.ticker : "BDX";
 
-      console.log("Not enough unlocked balance");
+    if (Number(amount) > assetBalance) {
+      setErrAmount(`Not enough unlocked ${assetTicker}`);
+      handleShowToastMsg(`Not enough unlocked ${assetTicker}`, false);
       return;
     }
-    if (Number(amount) === walletDetails.unlocked_balance) {
+    // A token send is never a sweep: sweeping is a BDX notion, and the BDX side
+    // of a token transfer only ever covers the fee.
+    if (!isTokenSend && Number(amount) === Number(walletDetails.unlocked_balance)) {
       setIsSweepTx(true);
+    }
+    // Sending a token still costs BDX, and a wallet holding plenty of the token
+    // but no coin is a confusing failure if it is not named.
+    if (isTokenSend && Number(walletDetails.unlocked_balance) <= 0) {
+      setErrAmount("No BDX to pay the network fee");
+      handleShowToastMsg("Sending a token still needs BDX for the network fee", false);
+      return;
     }
     if (!toAddress) {
       setErrAddress("Invalid address");
@@ -560,6 +600,11 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       // from the descriptor and all pay back to this wallet. The bridge
       // ignores both fields unless is_deploy_token is set, so an ordinary send
       // is unaffected.
+      // HF22: naming a token switches the whole send to it. The amounts in
+      // destinations are then in that token's units, while the fee stays BDX
+      // and is drawn from native outputs.
+      token_id: isTokenSend ? sendAsset : undefined,
+      token_decimal_point: isTokenSend ? String(selectedAsset!.decimals) : undefined,
       is_deploy_token: tokenToggle,
       token_descriptor: tokenToggle
         ? {
@@ -775,6 +820,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     setBnsError("");
     setAmount("");
     setIsSweepTx(false);
+    setSendAsset("");
     setManualPaymentId("");
     setPaymentIdToggle(false);
     setRegistrationString("");
@@ -1131,9 +1177,56 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
         textAlign="center"
         sx={{ fontSize: '1.2rem', fontWeight: 600 }}
       >
-        {walletDetails.unlocked_balance}{" "}
-        <span style={{ color: "#3ec745" }}>BDX</span>
+        {isTokenSend ? groupDigits(selectedAsset!.amount) : walletDetails.unlocked_balance}{" "}
+        <span style={{ color: "#3ec745" }}>
+          {isTokenSend ? selectedAsset!.ticker : "BDX"}
+        </span>
       </Typography>
+
+      {/* Asset picker. Shown only once the wallet actually holds a token, so a
+          BDX-only wallet sees the screen it always saw. */}
+      {!registrationToggle && !tokenToggle && heldAssets.length > 0 && (
+        <Box sx={{ mt: 1.5 }}>
+          <Typography sx={{ color: "#8a8a8a", fontSize: rf(12), mb: 0.75 }}>Asset</Typography>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+            {[{ id: "", ticker: "BDX", amount: walletDetails.unlocked_balance, decimals: 9 }, ...heldAssets].map(
+              (a: any) => {
+                const active = sendAsset === a.id;
+                return (
+                  <Box
+                    key={a.id || "bdx"}
+                    onClick={() => { setSendAsset(a.id); setAmount(""); setErrAmount(""); }}
+                    sx={{
+                      cursor: "pointer",
+                      px: 1.5,
+                      py: 0.75,
+                      border: "1px solid",
+                      borderColor: active ? "#3ec745" : (theme.palette.mode === "dark" ? "#2A2A38" : "#D1D1D1"),
+                      backgroundColor: active
+                        ? (theme.palette.mode === "dark" ? "#16281a" : "#EDF9EE")
+                        : "transparent",
+                      minWidth: 0,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: rf(12), fontWeight: 700, color: active ? "#3ec745" : theme.palette.text.primary }}>
+                      {a.ticker}
+                    </Typography>
+                    <Typography sx={{ fontSize: rf(10), color: "#8a8a8a" }}>
+                      {a.id ? groupDigits(a.amount) : a.amount}
+                    </Typography>
+                  </Box>
+                );
+              }
+            )}
+          </Box>
+          {isTokenSend && (
+            <Typography sx={{ fontSize: rf(11), color: "#8a8a8a", mt: 0.75 }}>
+              Amount is in {selectedAsset!.ticker}. The network fee is paid in BDX.
+            </Typography>
+          )}
+        </Box>
+      )}
+
       <Box mt={1.5} mb={1.5} sx={{ height: "0.2px", backgroundColor: "#8a8a8a" }} />
       {(!registrationToggle && !tokenToggle) ? (
         <>
@@ -1631,9 +1724,20 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
                     Amount
                   </Typography>
                   <Typography sx={{ fontWeight: 700, fontSize: rf(14) }}>
-                    {amount} BDX
+                    {amount} {isTokenSend ? selectedAsset!.ticker : "BDX"}
                   </Typography>
                 </Box>
+                {/* Two units on one screen, so the fee's is named explicitly. */}
+                {isTokenSend && (
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", mt: 1 }}>
+                    <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                      Network fee
+                    </Typography>
+                    <Typography sx={{ color: theme.palette.text.secondary, fontSize: rf(13) }}>
+                      paid in BDX
+                    </Typography>
+                  </Box>
+                )}
                 <Box
                   sx={{
                     display: "flex",

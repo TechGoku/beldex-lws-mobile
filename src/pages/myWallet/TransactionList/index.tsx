@@ -5,9 +5,13 @@ import { Box, IconButton, Typography } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import EmptyTransactions from "../../../icons/EmptyTransactionsDark";
 import { useTheme } from "@emotion/react";
+import { useAppSelector } from "../../../stores/hooks";
+import { tokensSelector } from "../../../stores/features/tokensSlice";
+import { atomicToDisplay, groupDigits, shortenTokenId } from "../../../utils/tokenAmount";
 import loadingIcon from "../../../icons/loading.gif";
 
 export default function TransactionList(props: any) {
+  const { chainInfo: tokenChainInfo } = useAppSelector(tokensSelector);
   const transactions = props?.transactions?.length ? props?.transactions : [];
   const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
   const theme: any = useTheme();
@@ -20,6 +24,24 @@ export default function TransactionList(props: any) {
     if (s < 3600) return `${Math.floor(s / 60)}m ago`;
     if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
     return `${Math.floor(s / 86400)}d ago`;
+  };
+
+  /* HF22: a transaction that moved a privacy token carries its amount in that
+     token's own units, and its BDX figure is only the fee. Showing the BDX
+     number for such a row reads as "0.0000" against a transfer that really
+     moved 1,200 POP, so the token amount is shown instead, with its ticker. */
+  const tokenLeg = (transaction: any) => {
+    if (!transaction || !transaction.token_id) return null;
+    const recv = BigInt(String(transaction.token_received || "0"));
+    const sent = BigInt(String(transaction.token_sent || "0"));
+    if (recv === BigInt(0) && sent === BigInt(0)) return null;
+    const net = recv - sent;
+    const info = tokenChainInfo[transaction.token_id];
+    return {
+      outgoing: net < BigInt(0),
+      amount: atomicToDisplay((net < BigInt(0) ? -net : net).toString(), info ? info.decimalPoint : 0),
+      ticker: info ? info.ticker : shortenTokenId(transaction.token_id, 6, 4),
+    };
   };
 
   const decimalValidation = (transaction: any) => {
@@ -91,9 +113,11 @@ export default function TransactionList(props: any) {
         transactions.map((transaction: any, index: number) => {
           // Extension .tx row: bordered in/out arrow, hash + time-ago,
           // signed colored amount, ⓘ opens the details view.
-          const outgoing =
-            transaction.approx_float_amount < 0 ||
-            transaction.hasOwnProperty("isJustSentTransaction");
+          const token = tokenLeg(transaction);
+          const outgoing = token
+            ? token.outgoing
+            : transaction.approx_float_amount < 0 ||
+              transaction.hasOwnProperty("isJustSentTransaction");
           const pending =
             transaction.hasOwnProperty("isJustSentTransaction") ||
             !transaction.isConfirmed;
@@ -163,7 +187,7 @@ export default function TransactionList(props: any) {
                 }}
               >
                 {outgoing ? "−" : "+"}
-                {decimalValidation(transaction)}
+                {token ? `${groupDigits(token.amount)} ${token.ticker}` : decimalValidation(transaction)}
               </Typography>
               <IconButton
                 size="small"

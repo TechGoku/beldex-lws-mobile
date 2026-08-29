@@ -68,15 +68,17 @@
   },
   "scripts": {
     "start": "npm run build && webpack-dev-server --port 8080 --config webpack.config.js",
-    "build": "webpack --config webpack.config.js --mode=production",
-    "build:prod": "webpack --config webpack.config.prod.js",
+    "build": "npm run sync:wasm && webpack --config webpack.config.js --mode=production",
+    "build:prod": "npm run sync:wasm && webpack --config webpack.config.prod.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "cap:sync": "npm run build:prod && npx cap sync",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "android": "npm run cap:sync && npx cap open android",
-    "ios": "npm run cap:sync && npx cap open ios"
+    "ios": "npm run cap:sync && npx cap open ios",
+    "sync:wasm": "node -e \"const f=require('fs'),p='node_modules/@bdxi/beldex-app-bridge/';if(f.existsSync(p)){for(const n of ['BeldexLibAppCpp_WASM.js','BeldexLibAppCpp_WASM.wasm'])f.copyFileSync('assets/'+n,p+n);console.log('synced wasm from assets/ into '+p)}\"",
+    "postinstall": "npm run sync:wasm"
   },
   "eslintConfig": {
     "extends": [
