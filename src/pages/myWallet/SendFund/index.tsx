@@ -29,6 +29,11 @@ import { SavedAddress } from "../../../services/addressBookStorage";
 import { getNetType } from "../../../services/runtimeConfig";
 import { looksLikeBnsName, resolveBnsWallet } from "../../../services/bns";
 import TxAuthGate from "../../../components/txAuthGate/TxAuthGate";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { useNavigate } from "react-router-dom";
+import { copyToClipboard } from "../../../services/clipboard";
+import { recordRegisteredToken } from "../../../stores/features/tokensSlice";
+import { atomicToDisplay } from "../../../utils/tokenAmount";
 const JSBigInt = require("@bdxi/beldex-bigint").BigInteger;
 const beldex_amount_format_utils = require("@bdxi/beldex-money-format");
 const beldex_config = require("@bdxi/beldex-config");
@@ -48,6 +53,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   const netType: any = getNetType();
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   // const [currency, setCurrency] = useState("AUD");
   const [priority, setPriority] = useState(5);
@@ -80,7 +86,18 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   // the bridge rather than being duplicated here, so they cannot drift out of
   // step with consensus. Null until the bridge answers.
   const [tokenInfo, setTokenInfo] = useState<any>(null);
-  const [registeredTokenId, setRegisteredTokenId] = useState("");
+  // What the just-completed registration produced. Held as a whole record
+  // rather than the bare id because the success dialog renders after
+  // clearStates() has emptied the form, so it cannot read the ticker or supply
+  // back off the inputs.
+  const [registeredToken, setRegisteredToken] = useState<{
+    tokenId: string;
+    ticker: string;
+    fullName: string;
+    decimalPoint: number;
+    currentSupply: string;
+    totalMaxSupply: string;
+  } | null>(null);
   // Ask the bridge once for the protocol's registration costs and limits.
   // Guarded because an older bridge build does not export this call; the form
   // then falls back to its built-in limits and simply cannot show the
@@ -532,6 +549,10 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   }
 
   const intiate_transaction = async () => {
+    // Drop any previous registration result. The success modal can also be
+    // dismissed by tapping the backdrop, which leaves this set; without the
+    // reset the next ordinary send would show the last token's id.
+    setRegisteredToken(null);
     let args: any = {
       registration_string: registrationString,
       isRegister: isRegister,
@@ -608,11 +629,29 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       console.log("success_fn ::", params);
       setTxnStatus("success");
       // HF22: a registration is the only place the token id appears. It is
-      // derived from the descriptor rather than chosen, so if it is not kept
-      // here the user has no way to recover it.
+      // hashed from the descriptor plus a salt the bridge generates and does
+      // not keep, so it cannot be derived again from anything the user typed.
+      // Write it to the token registry before touching anything else on this
+      // path - if the app is killed a moment later, the id must already be on
+      // disk or it is gone for good.
       if (params.token_id) {
-        setRegisteredTokenId(params.token_id);
-        handleShowToastMsg(`Token registered: ${params.token_id}`, true);
+        const record = {
+          tokenId: String(params.token_id),
+          ticker: tokenTicker.trim(),
+          fullName: tokenFullName.trim(),
+          decimalPoint: Number(tokenDecimals) || 0,
+          currentSupply: (tokenSupply || "0").trim(),
+          totalMaxSupply: tokenMaxSupply.trim(),
+        };
+        setRegisteredToken(record);
+        dispatch(
+          recordRegisteredToken({
+            ...record,
+            walletAddress: walletDetails.address_string,
+            txHash: params.tx_hash ? String(params.tx_hash) : undefined,
+            registeredAt: Date.now(),
+          })
+        );
       }
       //
       const total_sent__JSBigInt: any = BigInt("" + params.total_sent);
@@ -687,23 +726,6 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
   // converted on the way in. `owner` is deliberately ignored: the bridge always
   // sets the owner to this wallet's spend key, and a file naming someone else
   // would silently produce a token this wallet could never mint from.
-  const atomicToDisplay = (raw: any, decimals: number): string => {
-    let v: bigint;
-    try {
-      v = BigInt(String(raw).trim());
-    } catch {
-      return "";
-    }
-    if (decimals <= 0) return v.toString();
-    // Built from a string rather than 10n ** BigInt(decimals): the project's
-    // TS target predates ES2016, where the exponent operator is not allowed on
-    // bigint.
-    const scale = BigInt("1" + "0".repeat(decimals));
-    const whole = v / scale;
-    const frac = (v % scale).toString().padStart(decimals, "0").replace(/0+$/, "");
-    return frac ? `${whole}.${frac}` : whole.toString();
-  };
-
   const loadTokenDescriptorFile = (file: File) => {
     const reader = new FileReader();
     reader.onerror = () => {
@@ -767,6 +789,18 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
     setErrToken("");
   }
 
+  const copyTokenId = async () => {
+    if (!registeredToken) return;
+    const ok = await copyToClipboard(registeredToken.tokenId);
+    handleShowToastMsg(ok ? "Token id copied" : "Could not copy the token id", ok);
+  };
+
+  const dismissSuccess = () => {
+    setTxnStatus("");
+    setRegisteredToken(null);
+    handleClose();
+  };
+
   const PaymentSuccessDialog = () => {
     return (
       <Box sx={style} >
@@ -776,14 +810,79 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           sx={{ fontWeight: "700" }}
           textAlign={"center"}
         >
-          {isRegister ? "Masternode registered!" : "Your BDX is on it's way.."}
+          {registeredToken
+            ? "Token registered!"
+            : isRegister
+              ? "Masternode registered!"
+              : "Your BDX is on it's way.."}
         </Typography>
 
         <Box textAlign={"center"} mt={2}>
 
           {theme.palette.mode === 'dark' ? <SuccessTxnTickIconDark sx={{ width: '8rem', height: '8rem' }} /> : <SuccessTxnTickIconWhite sx={{ width: '8rem', height: '8rem' }} />}
         </Box>
-        <Box textAlign={"center"} mt={2}>
+
+        {/* The token id is generated during registration and is not derivable
+            from anything the user entered. This dialog is the first and only
+            moment it can be shown, so it is shown in full and made copyable
+            here rather than summarised - and it is also written to My Tokens,
+            which is what the "View" button opens. */}
+        {registeredToken && (
+          <Box
+            mt={2}
+            sx={{
+              border: `1px solid ${theme.palette.mode === "dark" ? "#2A2A38" : "#EFEFEF"}`,
+              background: theme.palette.mode === "dark" ? "#161616" : "#FAFAFA",
+              p: 1.5,
+            }}
+          >
+            <Typography sx={{ fontSize: rf(12), fontWeight: 600, textAlign: "center" }}>
+              {registeredToken.ticker}
+              {registeredToken.fullName ? ` · ${registeredToken.fullName}` : ""}
+            </Typography>
+            <Typography
+              sx={{ fontSize: rf(11), color: theme.palette.text.secondary, textAlign: "center" }}
+            >
+              Initial supply {registeredToken.currentSupply || "0"} of {registeredToken.totalMaxSupply}
+            </Typography>
+
+            <Typography sx={{ fontSize: rf(10), color: theme.palette.text.secondary, mt: 1.5 }}>
+              TOKEN ID
+            </Typography>
+            <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: rf(10),
+                  fontFamily: "monospace",
+                  wordBreak: "break-all",
+                  flex: 1,
+                  minWidth: 0,
+                }}
+              >
+                {registeredToken.tokenId}
+              </Typography>
+              <IconButton size="small" onClick={copyTokenId} aria-label="Copy token id">
+                <ContentCopyIcon sx={{ fontSize: "1.1rem", color: "#3ec745" }} />
+              </IconButton>
+            </Box>
+
+            <Typography sx={{ fontSize: rf(10), color: theme.palette.text.secondary, mt: 1 }}>
+              Saved to My Tokens. It stays pending until the network mines the registration.
+            </Typography>
+          </Box>
+        )}
+
+        <Box textAlign={"center"} mt={2} sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
+          {registeredToken && (
+            <Button
+              variant="outlined"
+              color="primary"
+              sx={{ fontWeight: 600, width: "150px", height: "45px", borderRadius: "0px" }}
+              onClick={() => { dismissSuccess(); navigate("/tokens"); }}
+            >
+              View
+            </Button>
+          )}
           <Button
             variant="contained"
             color="primary"
@@ -793,7 +892,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
               height: "45px",
               borderRadius: "0px",
             }}
-            onClick={() => { setTxnStatus(""), handleClose() }}
+            onClick={dismissSuccess}
           >
             Ok
           </Button>
@@ -1003,11 +1102,6 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
           </Box>
           {errToken && (
             <Typography sx={{ color: "#ff5c5c", fontSize: rf(11) }}>{errToken}</Typography>
-          )}
-          {registeredTokenId && (
-            <Typography sx={{ color: theme.palette.text.primary, fontSize: rf(11), wordBreak: "break-all", mt: 1 }}>
-              Token id: {registeredTokenId}
-            </Typography>
           )}
         </Box>
       )}
@@ -1605,7 +1699,7 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             }
           </Box>
           :
-          <PaymentSuccessDialog />
+          PaymentSuccessDialog()
 
         }
 

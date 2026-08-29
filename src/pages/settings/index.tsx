@@ -11,6 +11,7 @@ import OutboundIcon from "@mui/icons-material/Outbound";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
+import TokenOutlinedIcon from "@mui/icons-material/TokenOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -137,6 +138,12 @@ const Settings = () => {
                 title="Saved Addresses"
                 subtitle="Your address book"
                 onClick={() => navigate("/addressbook")}
+              />
+              <Row
+                icon={<TokenOutlinedIcon />}
+                title="My Tokens"
+                subtitle="Tokens you registered, and their ids"
+                onClick={() => navigate("/tokens")}
               />
             </Box>
 

@@ -3,6 +3,7 @@ import seedDetailReducer from './features/seedDetailSlice';
 import addressBookReducer from './features/addressBookSlice';
 import securityReducer from './features/securitySlice';
 import walletsReducer from './features/walletsSlice';
+import tokensReducer from './features/tokensSlice';
 import storage from "redux-persist/lib/storage";
 // import { persistReducer } from "redux-persist";
 import { combineReducers } from "@reduxjs/toolkit";
@@ -26,14 +27,15 @@ const persistConfig = {
     // plaintext). seedDetailReducer holds the active wallet's private keys, so
     // it is NOT persisted here - it is restored on startup from the encrypted
     // walletStore instead. The others are backed by their own native stores.
-    blacklist: ['seedDetailReducer', 'addressBookReducer', 'securityReducer', 'walletsReducer']
+    blacklist: ['seedDetailReducer', 'addressBookReducer', 'securityReducer', 'walletsReducer', 'tokensReducer']
 }
 
 const reducer = combineReducers({
     seedDetailReducer,
     addressBookReducer,
     securityReducer,
-    walletsReducer
+    walletsReducer,
+    tokensReducer
 });
 
 const persistedReducer = persistReducer(persistConfig, reducer);

@@ -16,6 +16,7 @@ import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import ContactsOutlinedIcon from "@mui/icons-material/ContactsOutlined";
+import TokenOutlinedIcon from "@mui/icons-material/TokenOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import DnsOutlinedIcon from "@mui/icons-material/DnsOutlined";
@@ -103,6 +104,11 @@ export default function SideDrawer({ open, onClose }: SideDrawerProps) {
                 label: "Saved Addresses",
                 icon: <ContactsOutlinedIcon />,
                 path: "/addressbook",
+              },
+              {
+                label: "My Tokens",
+                icon: <TokenOutlinedIcon />,
+                path: "/tokens",
               },
             ],
           },

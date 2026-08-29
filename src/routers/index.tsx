@@ -5,29 +5,47 @@ import MyWallet from "../pages/myWallet";
 import Settings from "../pages/settings";
 import AddressBookPage from "../pages/myWallet/AddressBook/AddressBookPage";
 import TransactionsPage from "../pages/myWallet/TransactionHistory/TransactionsPage";
+import TokensPage from "../pages/myWallet/Tokens/TokensPage";
 import SecuritySettings from "../pages/settings/Security";
 import ServerConfig from "../pages/settings/ServerConfig";
 import AccountDetails from "../pages/account";
 import Wallets from "../pages/wallets";
-const RouteList = () => {
-  const walletDetails = useSelector((state: any) => state.seedDetailReducer);
+// Defined at module scope, NOT inside RouteList.
+//
+// React identifies a component by its function reference. A guard declared
+// inside RouteList is a brand new function on every render, so React treats it
+// as a different component type and unmounts the entire page beneath it rather
+// than updating it - taking all of that page's local state with it.
+//
+// RouteList re-renders whenever seedDetailReducer changes, and a completed
+// transaction changes it (setTransactionhistory). The visible effect was that
+// finishing a send threw the user back to the dashboard and destroyed the
+// success dialog before it could be read - which for a token registration
+// meant the token id, shown nowhere else and not derivable afterwards, was
+// gone. Hoisting the guards keeps their identity stable, so the page updates
+// in place and the dialog survives.
+const DashBoardAuth = ({ children }: { children: JSX.Element }) => {
+  const isLogin = useSelector((state: any) => state.seedDetailReducer.isLogin);
+  if (!isLogin) {
+    return <Navigate to="/" />;
+  }
+
+  return children;
+};
+
+const LoginAuth = ({ children }: { children: JSX.Element }) => {
+  // Normally logged-in users are bounced away from the login screens, but
+  // while explicitly adding another wallet we let them through.
+  const isLogin = useSelector((state: any) => state.seedDetailReducer.isLogin);
   const addingWallet = useSelector((state: any) => state.walletsReducer.addingWallet);
-  const DashBoardAuth = ({ children }: { children: JSX.Element }) => {
-    if (!walletDetails.isLogin) {
-      return <Navigate to="/" />;
-    }
+  if (isLogin && !addingWallet) {
+    return <Navigate to="/mywallet" />;
+  }
 
-    return children;
-  };
-  const LoginAuth = ({ children }: { children: JSX.Element }) => {
-    // Normally logged-in users are bounced away from the login screens, but
-    // while explicitly adding another wallet we let them through.
-    if (walletDetails.isLogin && !addingWallet) {
-      return <Navigate to="/mywallet" />;
-    }
+  return children;
+};
 
-    return children;
-  };
+const RouteList = () => {
 
   return (
     <Routes>
@@ -70,6 +88,14 @@ const RouteList = () => {
         element={
           <DashBoardAuth>
             <TransactionsPage />
+          </DashBoardAuth>
+        }
+      />
+      <Route
+        path={"/tokens"}
+        element={
+          <DashBoardAuth>
+            <TokensPage />
           </DashBoardAuth>
         }
       />

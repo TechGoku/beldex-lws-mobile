@@ -12,7 +12,11 @@ import { copyToClipboard } from "../../../services/clipboard";
 import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
 import { useSelector } from 'react-redux';
 import { setBalance, setSyncState, setConnectionError } from "../../../stores/features/seedDetailSlice";
-import { useAppDispatch } from "../../../stores/hooks";
+import { refreshTokens, tokensSelector } from "../../../stores/features/tokensSlice";
+import { spendableBalance } from "../../../services/tokenApi";
+import { atomicToDisplay, groupDigits, shortenTokenId } from "../../../utils/tokenAmount";
+import { useNavigate } from "react-router-dom";
+import { useAppDispatch, useAppSelector } from "../../../stores/hooks";
 import { getBdxPriceUsdt } from "../../../services/price";
 import { rf } from "../../../utils/responsiveFont";
 
@@ -71,6 +75,29 @@ export default function Balance({ refreshSignal }: { refreshSignal?: number } = 
 
   const toastMsgRef = useRef<ToastMsgRef>(null);
 
+  const navigate = useNavigate();
+  const { balances, chainInfo } = useAppSelector(tokensSelector);
+
+  /* HF22 privacy tokens the account holds. Kept beside the BDX figure rather
+     than folded into it: a token amount is denominated in its own token, so
+     adding it to a BDX total would be arithmetic on two different units. */
+  const heldTokens = React.useMemo(
+    () =>
+      Object.values(balances)
+        .map((b: any) => {
+          const info = chainInfo[b.tokenId];
+          const decimals = info ? info.decimalPoint : 0;
+          return {
+            tokenId: b.tokenId,
+            ticker: info ? info.ticker : "",
+            amount: atomicToDisplay(spendableBalance(b), decimals),
+            describable: Boolean(info),
+          };
+        })
+        .filter((t) => t.amount !== "" && t.amount !== "0"),
+    [balances, chainInfo]
+  );
+
   const getWalletDetails = async () => {
     try {
       if (coreBridgeInstance.hostedMoneroAPIClient) {
@@ -110,6 +137,15 @@ export default function Balance({ refreshSignal }: { refreshSignal?: number } = 
             calculateBalances(total_sent, total_received, locked_balance)
           });
       }
+      if (walletDetails.address_string && walletDetails.sec_viewKey_string) {
+        dispatch(
+          refreshTokens({
+            address: walletDetails.address_string,
+            viewKey: walletDetails.sec_viewKey_string,
+          })
+        );
+      }
+
       getBdxPriceUsdt().then((p) => p !== null && setPrice(p)); // 60s-cached; fire-and-forget
 
       const Balance_JSBigInt = (totalsent: any, totalReceived: any) => {
@@ -351,6 +387,60 @@ export default function Balance({ refreshSignal }: { refreshSignal?: number } = 
           </Typography>
         </Box>
       </Box>
+      {/* HF22 privacy tokens the account holds. Listed beside the BDX figure
+          rather than folded into it: each amount is denominated in its own
+          token, so adding them to a BDX total would be arithmetic across
+          different units. */}
+      {heldTokens.length > 0 && (
+        <Box
+          sx={{
+            marginTop: '12px',
+            width: '100%',
+            backgroundColor: (theme) => theme.palette.background.default,
+            padding: { xs: '12px 16px', sm: '14px 20px' },
+            boxSizing: 'border-box',
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography sx={{
+              color: (theme) => theme.palette.text.secondary,
+              fontSize: rf(11), fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}>
+              Tokens
+            </Typography>
+            <Box
+              component="button"
+              onClick={() => navigate('/tokens')}
+              sx={{
+                cursor: 'pointer', background: 'transparent', border: 0, padding: 0,
+                fontFamily: "'Space Mono', monospace", fontSize: rf(11), color: '#3ec745',
+              }}
+            >
+              View all
+            </Box>
+          </Box>
+          {heldTokens.map((t) => (
+            <Box
+              key={t.tokenId}
+              sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 2, py: 0.4 }}
+            >
+              <Typography sx={{
+                fontSize: rf(13), fontWeight: 600, minWidth: 0,
+                color: (theme) => theme.palette.text.primary,
+                ...(t.describable ? {} : { fontFamily: 'monospace' }),
+              }}>
+                {t.describable ? t.ticker : shortenTokenId(t.tokenId, 8, 4)}
+              </Typography>
+              <Typography sx={{
+                fontSize: rf(13), fontWeight: 600, fontVariantNumeric: 'tabular-nums',
+                color: (theme) => theme.palette.text.primary, textAlign: 'right',
+              }}>
+                {mask(groupDigits(t.amount))}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      )}
       </>)}
 
       {/* {isMobileMode && (
