@@ -108,11 +108,18 @@ export interface TokenBalance {
   received: string;
   sent: string;
   locked: string;
+  /*! Spendable total, recomputed from the outputs and their key images.
+
+      Present whenever the wallet could verify for itself. Prefer it over
+      received - sent - locked, which relies on the server's spend count and is
+      wrong once any of the account's outputs has served as a ring decoy. */
+  verified?: string;
 }
 
 // received - sent - locked, floored at zero. Returned as a decimal string
 // because a token may declare 18 decimals, past what a double holds exactly.
 export function spendableBalance(b: TokenBalance): string {
+  if (b.verified !== undefined) return b.verified;
   const v = BigInt(b.received || "0") - BigInt(b.sent || "0") - BigInt(b.locked || "0");
   return (v > BigInt(0) ? v : BigInt(0)).toString();
 }
@@ -178,4 +185,93 @@ export async function fetchTokenState(
       totalMaxSupply: String(t.total_max_supply ?? "0"),
     })),
   };
+}
+
+export interface RawTokenOutput {
+  tokenId: string;
+  amount: string;
+  txPubKey: string;
+  index: number;
+  spendKeyImages: string[];
+}
+
+/*! Every token output the account has ever received, unfiltered.
+
+    Paired with verifiedTokenBalances() below. The server cannot compute a
+    trustworthy balance on its own: it is view-only, so when one of our outputs
+    appears as a decoy in someone else's ring it records a spend that never
+    happened. On a live chain that is not rare - it is why a token can report
+    more sent than it ever received and then vanish from the wallet at a
+    balance of zero. */
+export async function fetchAllTokenOutputs(
+  address: string,
+  viewKey: string
+): Promise<RawTokenOutput[]> {
+  const p = await post("get_unspent_outs", {
+    address,
+    view_key: viewKey,
+    amount: "0",
+    use_dust: true,
+    dust_threshold: "0",
+    mixin: 9,
+    all_tokens: true,
+  });
+  const outs = Array.isArray(p.outputs) ? p.outputs : [];
+  return outs
+    .filter((o: any) => o.token_id)
+    .map((o: any) => ({
+      tokenId: String(o.token_id),
+      amount: String(o.amount ?? "0"),
+      txPubKey: String(o.tx_pub_key ?? ""),
+      index: Number(o.index ?? 0),
+      spendKeyImages: Array.isArray(o.spend_key_images)
+        ? o.spend_key_images.map((k: any) => String(k))
+        : [],
+    }));
+}
+
+export interface WalletSpendKeys {
+  secViewKey: string;
+  pubSpendKey: string;
+  secSpendKey: string;
+}
+
+/*! Sum what the account can actually spend, per token.
+
+    An output counts unless its own key image appears among the spends the
+    server attached to it. Only the real owner can derive that key image, which
+    is precisely why this cannot be done on the server and is the same test the
+    send path already applies when choosing inputs.
+
+    `generateKeyImage` is the bridge's generate_key_image. It is given the
+    output's tx public key and its index within that transaction, so a failure
+    on one output must not discard the rest - an output whose key image cannot
+    be derived is counted as unspent, which errs towards showing a balance the
+    wallet has rather than hiding one it does. */
+export function verifiedTokenBalances(
+  outputs: RawTokenOutput[],
+  keys: WalletSpendKeys,
+  generateKeyImage: (txPub: string, viewSec: string, spendPub: string, spendSec: string, index: number) => string
+): Record<string, string> {
+  const totals: Record<string, bigint> = {};
+
+  for (const out of outputs) {
+    let spent = false;
+    if (out.spendKeyImages.length && out.txPubKey) {
+      try {
+        const mine = generateKeyImage(
+          out.txPubKey, keys.secViewKey, keys.pubSpendKey, keys.secSpendKey, out.index
+        );
+        spent = out.spendKeyImages.some((k) => k === mine);
+      } catch {
+        spent = false;
+      }
+    }
+    if (spent) continue;
+    totals[out.tokenId] = (totals[out.tokenId] || BigInt(0)) + BigInt(out.amount || "0");
+  }
+
+  const result: Record<string, string> = {};
+  for (const id of Object.keys(totals)) result[id] = totals[id].toString();
+  return result;
 }

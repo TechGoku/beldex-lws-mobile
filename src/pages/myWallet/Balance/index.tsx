@@ -142,6 +142,16 @@ export default function Balance({ refreshSignal }: { refreshSignal?: number } = 
           refreshTokens({
             address: walletDetails.address_string,
             viewKey: walletDetails.sec_viewKey_string,
+            // Lets the balance be verified against the outputs rather than
+            // trusting the server's spend count. Absent, the figure still
+            // renders - it is just the unverified one.
+            spendKeys: {
+              secViewKey: walletDetails.sec_viewKey_string,
+              pubSpendKey: walletDetails.pub_spendKey_string,
+              secSpendKey: walletDetails.sec_spendKey_string,
+            },
+            generateKeyImage: (txPub, viewSec, spendPub, spendSec, index) =>
+              coreBridgeInstance.beldex_utils.generate_key_image(txPub, viewSec, spendPub, spendSec, index),
           })
         );
       }

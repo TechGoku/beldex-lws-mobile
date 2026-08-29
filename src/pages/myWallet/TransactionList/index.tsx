@@ -31,16 +31,32 @@ export default function TransactionList(props: any) {
      number for such a row reads as "0.0000" against a transfer that really
      moved 1,200 POP, so the token amount is shown instead, with its ticker. */
   const tokenLeg = (transaction: any) => {
-    if (!transaction || !transaction.token_id) return null;
-    const recv = BigInt(String(transaction.token_received || "0"));
-    const sent = BigInt(String(transaction.token_sent || "0"));
-    if (recv === BigInt(0) && sent === BigInt(0)) return null;
-    const net = recv - sent;
-    const info = tokenChainInfo[transaction.token_id];
+    /* One transaction can move several tokens, so the server sends a leg per
+       token. The row shows the largest by absolute value and says how many
+       others there are; the detail view has the rest. Summing them would be
+       meaningless — each is denominated in its own token. */
+    const legs = Array.isArray(transaction?.token_legs) ? transaction.token_legs : [];
+    const moved = legs
+      .map((l: any) => {
+        const net = BigInt(String(l.received || "0")) - BigInt(String(l.sent || "0"));
+        const info = tokenChainInfo[l.token_id];
+        return {
+          net,
+          magnitude: net < BigInt(0) ? -net : net,
+          decimals: info ? info.decimalPoint : 0,
+          ticker: info ? info.ticker : shortenTokenId(String(l.token_id), 6, 4),
+        };
+      })
+      .filter((l: any) => l.magnitude !== BigInt(0));
+
+    if (!moved.length) return null;
+    moved.sort((a: any, b: any) => (a.magnitude === b.magnitude ? 0 : a.magnitude < b.magnitude ? 1 : -1));
+    const top = moved[0];
     return {
-      outgoing: net < BigInt(0),
-      amount: atomicToDisplay((net < BigInt(0) ? -net : net).toString(), info ? info.decimalPoint : 0),
-      ticker: info ? info.ticker : shortenTokenId(transaction.token_id, 6, 4),
+      outgoing: top.net < BigInt(0),
+      amount: atomicToDisplay(top.magnitude.toString(), top.decimals),
+      ticker: top.ticker,
+      extra: moved.length - 1,
     };
   };
 
@@ -187,7 +203,9 @@ export default function TransactionList(props: any) {
                 }}
               >
                 {outgoing ? "−" : "+"}
-                {token ? `${groupDigits(token.amount)} ${token.ticker}` : decimalValidation(transaction)}
+                {token
+                  ? `${groupDigits(token.amount)} ${token.ticker}${token.extra ? ` +${token.extra}` : ""}`
+                  : decimalValidation(transaction)}
               </Typography>
               <IconButton
                 size="small"

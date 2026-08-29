@@ -9,7 +9,10 @@ import {
 import {
   ChainTokenInfo,
   TokenBalance,
+  WalletSpendKeys,
   fetchTokenState,
+  fetchAllTokenOutputs,
+  verifiedTokenBalances,
 } from "../../services/tokenApi";
 
 export type { RegisteredToken };
@@ -87,7 +90,20 @@ export const forgetRegisteredToken = createAsyncThunk("tokens/forget", async (to
     it yet, so it would otherwise be absent from a holdings-driven reply. */
 export const refreshTokens = createAsyncThunk(
   "tokens/refresh",
-  async (creds: { address: string; viewKey: string }, { getState }) => {
+  async (
+    creds: {
+      address: string;
+      viewKey: string;
+      /*! Spend keys and the bridge's key-image function.
+
+          Supplied when available so balances can be verified rather than taken
+          on trust; without them the server's figure is used, which is what a
+          caller that has no bridge handy (or a locked wallet) falls back to. */
+      spendKeys?: WalletSpendKeys;
+      generateKeyImage?: (txPub: string, viewSec: string, spendPub: string, spendSec: string, index: number) => string;
+    },
+    { getState }
+  ) => {
     const state = getState() as RootState;
     const known = state.tokensReducer.tokens.map((t) => t.tokenId);
     const reply = await fetchTokenState(creds.address, creds.viewKey, known);
@@ -126,6 +142,30 @@ export const refreshTokens = createAsyncThunk(
         // The server holds the balance but could not reach the daemon, so the
         // token cannot be described. Nothing can be concluded about it.
         status[t.tokenId] = "unknown";
+      }
+    }
+
+    /* The server's total_sent counts every ring member it owns, decoys
+       included, so a token can report more sent than it ever received and then
+       disappear at a balance of zero. Recompute from the outputs themselves,
+       keeping only those whose key image is not among the spends attached to
+       them - a test only the owner can perform. */
+    if (creds.spendKeys && creds.generateKeyImage) {
+      try {
+        const outs = await fetchAllTokenOutputs(creds.address, creds.viewKey);
+        const verified = verifiedTokenBalances(outs, creds.spendKeys, creds.generateKeyImage);
+        for (const id of Object.keys(balances)) {
+          balances[id] = { ...balances[id], verified: verified[id] ?? "0" };
+        }
+        for (const id of Object.keys(verified)) {
+          if (!balances[id]) {
+            balances[id] = { tokenId: id, received: verified[id], sent: "0", locked: "0", verified: verified[id] };
+          }
+        }
+      } catch {
+        // Server too old to serve every token at once, or the request failed.
+        // The unverified figures still render; they are only wrong once one of
+        // the account's outputs has been used as a decoy.
       }
     }
 

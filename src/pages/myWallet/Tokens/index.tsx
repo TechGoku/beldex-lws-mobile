@@ -19,6 +19,7 @@ import {
   tokensSelector,
 } from "../../../stores/features/tokensSlice";
 import { copyToClipboard } from "../../../services/clipboard";
+import { CoreBridgeInstanceContext } from "../../../CoreBridgeInstanceContext";
 import { spendableBalance } from "../../../services/tokenApi";
 import { atomicToDisplay, groupDigits, shortenTokenId } from "../../../utils/tokenAmount";
 
@@ -65,6 +66,7 @@ export default function Tokens() {
   const isMobileMode = useMediaQuery(theme.breakpoints.down("sm"));
   const dispatch = useAppDispatch();
   const toastMsgRef = useRef<ToastMsgRef>(null);
+  const coreBridge = React.useContext(CoreBridgeInstanceContext);
 
   const { tokens, loaded, status, chainInfo, balances, refreshing, lookupSupported, lookupError } =
     useAppSelector(tokensSelector);
@@ -77,10 +79,17 @@ export default function Tokens() {
         refreshTokens({
           address: walletAddress,
           viewKey: walletDetails.sec_viewKey_string,
+          spendKeys: {
+            secViewKey: walletDetails.sec_viewKey_string,
+            pubSpendKey: walletDetails.pub_spendKey_string,
+            secSpendKey: walletDetails.sec_spendKey_string,
+          },
+          generateKeyImage: (txPub: string, viewSec: string, spendPub: string, spendSec: string, index: number) =>
+            coreBridge.beldex_utils.generate_key_image(txPub, viewSec, spendPub, spendSec, index),
         })
       );
     }
-  }, [dispatch, walletAddress, walletDetails.sec_viewKey_string]);
+  }, [dispatch, walletAddress, walletDetails, coreBridge]);
 
   const [expanded, setExpanded] = useState<string>("");
 
