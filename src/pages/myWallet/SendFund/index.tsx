@@ -1108,7 +1108,10 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
             <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mb: 1 }}>
               Registering locks {(Number(tokenInfo.collateral_amount) / 1e9).toLocaleString()} BDX
               for {Number(tokenInfo.collateral_lock_blocks).toLocaleString()} blocks. The collateral
-              is returned when the lock expires; the network fee is separate.
+              is returned when the lock expires.
+              {tokenInfo.registration_fee_amount
+                ? ` It also costs a ${(Number(tokenInfo.registration_fee_amount) / 1e9).toLocaleString()} BDX registration fee (half burned, half to governance), which is not returned.`
+                : ""}{" "}The network fee is separate.
             </Typography>
           )}
           <Typography sx={{ color: "#8a8a8a", fontSize: rf(11), mt: 1 }}>Ticker</Typography>
@@ -1644,8 +1647,11 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
                 {tokenInfo && (
                   <Typography mt={2} sx={{ color: "#c62", fontSize: rf(12) }}>
                     This locks {(Number(tokenInfo.collateral_amount) / 1e9).toLocaleString()} BDX for{" "}
-                    {Number(tokenInfo.collateral_lock_blocks).toLocaleString()} blocks, plus the network fee.
-                    The collateral returns to this wallet when the lock expires.
+                    {Number(tokenInfo.collateral_lock_blocks).toLocaleString()} blocks
+                    {tokenInfo.registration_fee_amount
+                      ? ` and pays a ${(Number(tokenInfo.registration_fee_amount) / 1e9).toLocaleString()} BDX registration fee`
+                      : ""}, plus the network fee. The collateral returns to this wallet when the lock expires;
+                    the fee does not.
                   </Typography>
                 )}
               </>
