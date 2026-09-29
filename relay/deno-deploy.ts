@@ -49,7 +49,7 @@
  * relay operated by an untrusted third party. Request bodies are NEVER logged.
  */
 
-const UPSTREAM = "https://lwsapi.beldex.io";
+const UPSTREAM = "https://lwsapi.rpcnode.stream";
 
 // Bound the upstream fetch so a hung origin can never pin a relay request open.
 const UPSTREAM_TIMEOUT_MS = 20_000;

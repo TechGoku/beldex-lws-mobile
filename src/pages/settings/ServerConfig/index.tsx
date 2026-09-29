@@ -274,7 +274,7 @@ export default function ServerConfig() {
 
           <Typography sx={{ fontWeight: 600 }}>LWS API URL</Typography>
           <Input
-            placeholder="https://lwsapi.beldex.io  ·  http://192.168.1.10:8080"
+            placeholder="https://lwsapi.rpcnode.stream  ·  http://192.168.1.10:8080"
             disableUnderline
             sx={inputSx}
             value={url}
@@ -330,11 +330,11 @@ export default function ServerConfig() {
           <Typography sx={{ fontWeight: 600, mt: 3 }}>Fallback server (auto)</Typography>
           <Typography sx={{ color: theme.palette.text.secondary, fontSize: "0.78rem", mt: 0.5 }}>
             If your ISP blocks the main Beldex server, the wallet automatically
-            retries here — no extra app or setup. Defaults to Beldex's alternate
-            domain (lwsapi.beldex.dev). Clear to disable, or set a self-hosted relay.
+            retries here — no extra app or setup. Off unless set: point it at a
+            self-hosted relay that serves the same network as the main server.
           </Typography>
           <Input
-            placeholder="https://lwsapi.beldex.dev"
+            placeholder="https://relay.example.com"
             disableUnderline
             sx={inputSx}
             value={relayUrl}

@@ -54,7 +54,7 @@
 
 const http = require("node:http");
 
-const UPSTREAM = "https://lwsapi.beldex.io";
+const UPSTREAM = "https://lwsapi.rpcnode.stream";
 const PORT = Number(process.env.PORT) || 8080;
 const HOST = "0.0.0.0";
 

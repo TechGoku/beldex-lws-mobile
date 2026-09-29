@@ -22,7 +22,7 @@ function readServerUrlFromEnvFile() {
     }
   }
 
-  return 'lwsapi.beldex.dev';
+  return 'lwsapi.rpcnode.stream';
 }
 
 // Honour an explicit scheme in SERVER_URL so a plain-HTTP endpoint (a local or

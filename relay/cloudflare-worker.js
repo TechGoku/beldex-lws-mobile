@@ -31,7 +31,7 @@
  * relay operated by an untrusted third party.
  */
 
-const UPSTREAM = "https://lwsapi.beldex.io";
+const UPSTREAM = "https://lwsapi.rpcnode.stream";
 
 // Only these LWS endpoints are proxied — keeps the relay from being used as an
 // open proxy for arbitrary hosts.
