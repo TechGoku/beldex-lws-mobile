@@ -135,7 +135,8 @@ const SendFund = ({ prefill, onPrefillConsumed }: SendFundProps = {}) => {
       // so every call threw and the form silently lost the collateral figure.
       const utils = coreBridgeInstance?.beldex_utils;
       if (utils && typeof utils.token_registration_info === "function") {
-        const raw = utils.token_registration_info();
+        // The registration fee differs between networks; ask for this one.
+        const raw = utils.token_registration_info(getNetType());
         setTokenInfo(typeof raw === "string" ? JSON.parse(raw) : raw);
       }
     } catch (e) {
